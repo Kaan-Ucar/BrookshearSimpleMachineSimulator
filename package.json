@@ -1,0 +1,29 @@
+{
+  "name": "brookshear-simple-machine-simulator",
+  "version": "0.0.0",
+  "description": "BrookshearSimpleMachineSimulator",
+  "main": "server.js",
+  "author": {
+    "name": ""
+  },
+  "dependencies": {
+    "css-loader": "^3.5.3",
+    "express": "^4.17.1",
+    "path": "^0.12.7",
+    "radium": "^0.26.0",
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0",
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.8.3",
+    "webpack": "^4.42.0",
+    "webpack-cli": "^3.3.11"
+  },
+  "scripts": {
+    "build": "webpack-cli app.tsx --config webpack-config.js"
+  },
+  "devDependencies": {
+    "@types/react": "^16.9.38",
+    "@types/react-dom": "^16.9.8",
+    "@types/radium": "^0.24.2"
+  }
+}
