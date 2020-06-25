@@ -127,8 +127,7 @@ class App extends react_1.default.Component {
             display: "flex",
             flexDirection: "row",
             alignContent: "stretch",
-            alighItems: "stretch",
-            boxSizing: "border-box"
+            alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
             react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval) }),
