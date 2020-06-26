@@ -74,6 +74,9 @@
     <TypeScriptCompile Include="slider.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="toolBar.tsx">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="toolButton.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
