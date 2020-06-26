@@ -340,7 +340,7 @@ class Cell extends react_1.default.Component {
                 borderColor: "#d31ac4"
             }
         };
-        return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", 
+        return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", 
             //maxLength={2}
             onChange: (event) => this.handleChange(event.target) }));
     }
@@ -36081,9 +36081,13 @@ class ToolBar extends react_1.default.Component {
             display: "flex",
             flexWrap: "wrap",
             flexShrink: 0,
-            alignItems: "stretch",
+            justifyContent: "space-between",
             backgroundColor: palette_1.default.toolBarBackground,
             color: palette_1.default.toolBar
+        };
+        const alignStyle = {
+            display: "flex",
+            alignItems: "stretch"
         };
         let runButton;
         if (this.props.running) {
@@ -36093,10 +36097,14 @@ class ToolBar extends react_1.default.Component {
             runButton = (react_1.default.createElement(toolButton_1.default, { key: "Run", icon: "play_arrow", label: "Run", onClick: this.props.onRun }));
         }
         return (react_1.default.createElement("section", { style: style },
-            react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
-            runButton,
-            react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
-            react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepIntervalChange })));
+            react_1.default.createElement("div", { style: alignStyle },
+                react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
+                runButton,
+                react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
+                react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepIntervalChange })),
+            react_1.default.createElement("div", { style: alignStyle },
+                react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
+                    react_1.default.createElement(toolButton_1.default, { key: "Source Code", icon: "code", label: "Source Code", onClick: () => { } })))));
     }
 }
 exports.default = ToolBar;

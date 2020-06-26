@@ -39,6 +39,7 @@ class Cell extends React.Component<any, any> {
                 style={style}
                 value={this.state.text}
                 type="text"
+                spellCheck="false"
                 //maxLength={2}
                 onChange={(event) => this.handleChange(event.target)}
             />
