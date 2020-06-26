@@ -101,7 +101,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const react_dom_1 = __importDefault(__webpack_require__(/*! react-dom */ "./node_modules/react-dom/index.js"));
-const toolbar2_1 = __importDefault(__webpack_require__(/*! ./toolbar2 */ "./toolbar2.tsx"));
+const toolBar_1 = __importDefault(__webpack_require__(/*! ./toolBar */ "./toolBar.tsx"));
 const cpu_1 = __importDefault(__webpack_require__(/*! ./cpu */ "./cpu.tsx"));
 const memory_1 = __importDefault(__webpack_require__(/*! ./memory */ "./memory.tsx"));
 const brookshearMachine_1 = __importDefault(__webpack_require__(/*! ./brookshearMachine */ "./brookshearMachine.js"));
@@ -130,7 +130,7 @@ class App extends react_1.default.Component {
             alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolbar2_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval) }),
+            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval) }),
             react_1.default.createElement("div", { style: mainStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }))));
@@ -36052,55 +36052,10 @@ exports.default = radium_1.default(Slider);
 
 /***/ }),
 
-/***/ "./toolButton.tsx":
-/*!************************!*\
-  !*** ./toolButton.tsx ***!
-  \************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
-class ToolButton extends react_1.default.Component {
-    render() {
-        const style = {
-            display: "flex",
-            flexDirection: "column",
-            color: palette_1.default.toolBar,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "8px",
-            minWidth: "64px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            ":hover": {
-                color: palette_1.default.toolBarHighlight,
-                background: palette_1.default.toolBarHighlightBackground
-            }
-        };
-        return (react_1.default.createElement("button", { style: style, onClick: () => this.props.onClick() },
-            react_1.default.createElement("i", { className: "material-icons" }, this.props.icon),
-            this.props.label));
-    }
-}
-exports.default = radium_1.default(ToolButton);
-
-
-/***/ }),
-
-/***/ "./toolbar2.tsx":
-/*!**********************!*\
-  !*** ./toolbar2.tsx ***!
-  \**********************/
+/***/ "./toolBar.tsx":
+/*!*********************!*\
+  !*** ./toolBar.tsx ***!
+  \*********************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -36145,6 +36100,51 @@ class ToolBar extends react_1.default.Component {
     }
 }
 exports.default = ToolBar;
+
+
+/***/ }),
+
+/***/ "./toolButton.tsx":
+/*!************************!*\
+  !*** ./toolButton.tsx ***!
+  \************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+class ToolButton extends react_1.default.Component {
+    render() {
+        const style = {
+            display: "flex",
+            flexDirection: "column",
+            color: palette_1.default.toolBar,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "8px",
+            minWidth: "64px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            ":hover": {
+                color: palette_1.default.toolBarHighlight,
+                background: palette_1.default.toolBarHighlightBackground
+            }
+        };
+        return (react_1.default.createElement("button", { style: style, onClick: () => this.props.onClick() },
+            react_1.default.createElement("i", { className: "material-icons" }, this.props.icon),
+            this.props.label));
+    }
+}
+exports.default = radium_1.default(ToolButton);
 
 
 /***/ })
