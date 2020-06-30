@@ -104,7 +104,7 @@ const react_dom_1 = __importDefault(__webpack_require__(/*! react-dom */ "./node
 const toolBar_1 = __importDefault(__webpack_require__(/*! ./toolBar */ "./toolBar.tsx"));
 const cpu_1 = __importDefault(__webpack_require__(/*! ./cpu */ "./cpu.tsx"));
 const memory_1 = __importDefault(__webpack_require__(/*! ./memory */ "./memory.tsx"));
-const brookshearMachine_1 = __importDefault(__webpack_require__(/*! ./brookshearMachine */ "./brookshearMachine.js"));
+const brookshearMachine_1 = __importDefault(__webpack_require__(/*! ./brookshearMachine */ "./brookshearMachine.ts"));
 class App extends react_1.default.Component {
     constructor(props) {
         super(props);
@@ -147,101 +147,79 @@ react_dom_1.default.render(react_1.default.createElement(App, null), document.ge
 
 /***/ }),
 
-/***/ "./brookshearMachine.js":
+/***/ "./brookshearMachine.ts":
 /*!******************************!*\
-  !*** ./brookshearMachine.js ***!
+  !*** ./brookshearMachine.ts ***!
   \******************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-﻿
 
+Object.defineProperty(exports, "__esModule", { value: true });
 class BrookshearMachine {
     constructor() {
-        const REGISTERS_LENGTH = 16;
-        const MEMORY_LENGTH = 256;
-
-        this._programCounter = 0;
-        this._registers = new Uint8Array(REGISTERS_LENGTH);
-        this._memory = new Uint8Array(MEMORY_LENGTH);
-        this._running = false;
-        this._stepInterval = 2000;
-
         this.onStop = () => { };
         this.onProgramCounterChange = (pc) => { };
         this.onRegisterChange = (register, value) => { };
         this.onMemoryChange = (address, value) => { };
+        this._programCounter = 0;
+        this._registers = new Uint8Array(16);
+        this._memory = new Uint8Array(256);
+        this._running = false;
+        this._stepInterval = 2000;
     }
-
     resetCPU() {
         this.setProgramCounter(0);
-
         for (let i = 0; i < this._registers.length; ++i)
             this.setRegister(i, 0);
     }
-
     setStepInterval(ms) {
         this._stepInterval = ms;
     }
-
     setProgramCounter(pc) {
         if (pc === this._programCounter)
             return;
-
         this._programCounter = pc;
         this.onProgramCounterChange(pc);
     }
-
     setRegister(register, value) {
         if (this._registers[register] === value)
             return;
-
         this._registers[register] = value;
         this.onRegisterChange(register, value);
     }
-
     setMemoryCell(address, value) {
         if (this._memory[address] === value)
             return;
-
         this._memory[address] = value;
         this.onMemoryChange(address, value);
     }
-
     run() {
         this._running = true;
-
         do {
             this.stepOver();
         } while (this._running);
     }
-
     async asyncRun() {
         this._running = true;
-
         this.stepOver();
         while (this._running) {
             await new Promise(resolve => setTimeout(resolve, this._stepInterval));
-
             if (this._running)
                 this.stepOver();
-        } 
+        }
     }
-
     stop() {
         this._running = false;
         this.onStop();
     }
-
     stepOver() {
         const opcode = this._memory[this._programCounter] >>> 4;
         const operandA = this._memory[this._programCounter] & 15;
         const operandBC = this._memory[this._programCounter + 1];
         const operandB = operandBC >>> 4;
         const operandC = operandBC & 15;
-
         switch (opcode) {
             case 1: // Copy the content of memory cell BC to register A.
                 this.setRegister(operandA, this._memory[operandBC]);
@@ -250,7 +228,7 @@ class BrookshearMachine {
                 this.setRegister(operandA, operandBC);
                 break;
             case 3: // Copy the content of register A to memory cell BC.
-                this.setMemoryCell(operandBC, this._registers[operandA])
+                this.setMemoryCell(operandBC, this._registers[operandA]);
                 break;
             case 4: // Copy the content of register B to register C.
                 this.setRegister(operandC, this._registers[operandB]);
@@ -284,17 +262,15 @@ class BrookshearMachine {
             case 13: // Jump to instruction in memory cell BC if the content of register A is greater than (>) the content of register 0. Data is interpreted as integers in two's-complement notation.
                 if (this._registers[operandA] > this._registers[0])
                     this.setProgramCounter(operandBC - 2);
-
             default:
                 this.stop();
                 return;
         }
-
         this.setProgramCounter(this._programCounter + 2);
     }
 }
+exports.default = BrookshearMachine;
 
-/* harmony default export */ __webpack_exports__["default"] = (BrookshearMachine);
 
 /***/ }),
 
@@ -318,10 +294,13 @@ class Cell extends react_1.default.Component {
     constructor(props) {
         super(props);
         this._input = react_1.default.createRef();
-        this.state = { text: "00" };
+        this.state = {
+            text: "00",
+            focused: false
+        };
     }
-    static formatValue(value) {
-        return value.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
+    static formatText(text) {
+        return text.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
     }
     render() {
         const style = {
@@ -340,9 +319,7 @@ class Cell extends react_1.default.Component {
                 borderColor: "#d31ac4"
             }
         };
-        return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", 
-            //maxLength={2}
-            onChange: (event) => this.handleChange(event.target) }));
+        return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) }));
     }
     handleChange(input) {
         this.setText(input.value, input.selectionEnd);
@@ -351,13 +328,15 @@ class Cell extends react_1.default.Component {
         this.setText(value.toString(16).padStart(2, "0"), this._input.current.selectionEnd);
     }
     setText(text, cursor) {
-        const formattedText = Cell.formatValue(text);
+        const formattedText = Cell.formatText(text);
         this.setState({ text: formattedText }, () => { this._input.current.selectionStart = this._input.current.selectionEnd = cursor; });
         this.props.onChange(parseInt(formattedText, 16));
     }
     focus() {
-        this._input.current.selectionStart = this._input.current.selectionEnd = 0;
-        this._input.current.focus();
+        if (!this.state.focused) {
+            this._input.current.selectionStart = this._input.current.selectionEnd = 0;
+            this._input.current.focus();
+        }
     }
 }
 exports.default = radium_1.default(Cell);
@@ -458,8 +437,8 @@ class CPUCell extends react_1.default.Component {
                 color: palette_1.default.focus
             }
         };
-        return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement("label", { onClick: () => this._cell.current.focus() }, this.props.label),
+        return (react_1.default.createElement("div", { style: style, onClick: () => this._cell.current.focus() },
+            react_1.default.createElement("label", null, this.props.label),
             react_1.default.createElement(cell_1.default, { ref: this._cell, onChange: (value) => this.props.onChange(this.props.register, value) })));
     }
     setValue(value) {
@@ -589,12 +568,12 @@ class MemoryCellPair extends react_1.default.Component {
         const firstLabel = MemoryCellPair.toAddressLabel(firstAddress);
         const secondLabel = MemoryCellPair.toAddressLabel(secondAddress);
         return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement("div", { key: 0, style: firstCellStyle },
-                react_1.default.createElement("label", { style: labelStyle, onClick: () => this._firstCell.current.focus() }, firstLabel),
+            react_1.default.createElement("div", { key: 0, style: firstCellStyle, onClick: () => this._firstCell.current.focus() },
+                react_1.default.createElement("label", { style: labelStyle }, firstLabel),
                 react_1.default.createElement(cell_1.default, { ref: this._firstCell, onChange: (value) => this.props.onChange(firstAddress, value) })),
-            react_1.default.createElement("div", { key: 1, style: secondCellStyle },
+            react_1.default.createElement("div", { key: 1, style: secondCellStyle, onClick: () => this._secondCell.current.focus() },
                 react_1.default.createElement(cell_1.default, { ref: this._secondCell, onChange: (value) => this.props.onChange(secondAddress, value) }),
-                react_1.default.createElement("label", { style: labelStyle, onClick: () => this._secondCell.current.focus() }, secondLabel))));
+                react_1.default.createElement("label", { style: labelStyle }, secondLabel))));
     }
     setFirstCell(value) {
         this._firstCell.current.setValue(value);
@@ -36070,9 +36049,6 @@ const toolButton_1 = __importDefault(__webpack_require__(/*! ./toolButton */ "./
 const slider_1 = __importDefault(__webpack_require__(/*! ./slider */ "./slider.tsx"));
 const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
 class ToolBar extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-    }
     render() {
         const style = {
             position: "fixed",

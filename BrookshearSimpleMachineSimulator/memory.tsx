@@ -41,7 +41,7 @@ class Memory extends React.Component<any, any> {
         );
     }
 
-    setCell(address, value) {
+    setCell(address: number, value: number) {
         const cellPair = this._cellPairs[Math.trunc(address / 2)].current;
         if (address % 2 === 0)
             cellPair.setFirstCell(value);

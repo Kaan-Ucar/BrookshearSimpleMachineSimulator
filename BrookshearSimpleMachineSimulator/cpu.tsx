@@ -53,11 +53,11 @@ class CPU extends React.Component<any, any> {
         );
     }
 
-    setProgramCounter(value) {
+    setProgramCounter(value: number) {
         this._pc.current.setValue(value);
     }
 
-    setRegister(register, value) {
+    setRegister(register: number, value: number) {
         this._registers[register].current.setValue(value);
     }
 }

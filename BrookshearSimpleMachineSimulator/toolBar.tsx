@@ -4,10 +4,6 @@ import Slider from "./slider";
 import Palette from "./palette";
 
 class ToolBar extends React.Component<any, any> {
-    constructor(props) {
-        super(props);
-    }
-
     render() {
         const style = {
             position: "fixed",

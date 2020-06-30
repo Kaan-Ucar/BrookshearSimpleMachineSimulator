@@ -3,8 +3,8 @@ import Radium from "radium"
 import Palette from "./palette"
 
 class Cell extends React.Component<any, any> {
-    static formatValue(value) {
-        return value.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
+    static formatText(text: string) {
+        return text.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
     }
 
     private _input = React.createRef<HTMLInputElement>();
@@ -12,7 +12,10 @@ class Cell extends React.Component<any, any> {
     constructor(props) {
         super(props);
 
-        this.state = { text: "00" };
+        this.state = {
+            text: "00",
+            focused: false
+        };
     }
 
     render() {
@@ -40,22 +43,23 @@ class Cell extends React.Component<any, any> {
                 value={this.state.text}
                 type="text"
                 spellCheck="false"
-                //maxLength={2}
                 onChange={(event) => this.handleChange(event.target)}
+                onFocus={() => this.setState({ focused: true })}
+                onBlur={() => this.setState({ focused: false })}
             />
         );
     }
 
-    handleChange(input) {
+    handleChange(input: EventTarget & HTMLInputElement) {
         this.setText(input.value, input.selectionEnd);
     }
 
-    setValue(value) {
+    setValue(value: number) {
         this.setText(value.toString(16).padStart(2, "0"), this._input.current.selectionEnd);
     }
 
-    setText(text, cursor) {
-        const formattedText = Cell.formatValue(text);
+    setText(text: string, cursor: number) {
+        const formattedText = Cell.formatText(text);
 
         this.setState(
             { text: formattedText },
@@ -66,8 +70,10 @@ class Cell extends React.Component<any, any> {
     }
 
     focus() {
-        this._input.current.selectionStart = this._input.current.selectionEnd = 0;
-        this._input.current.focus();
+        if (!this.state.focused) {
+            this._input.current.selectionStart = this._input.current.selectionEnd = 0;
+            this._input.current.focus();
+        }
     }
 }
 

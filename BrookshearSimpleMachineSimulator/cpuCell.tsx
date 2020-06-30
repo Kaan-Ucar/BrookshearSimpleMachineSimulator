@@ -24,18 +24,20 @@ class CPUCell extends React.Component<any, any> {
         } as React.CSSProperties;
 
         return (
-            <div style={style}>
-                <label onClick={() => this._cell.current.focus()}>
-                    {this.props.label}
-                </label>
-                <Cell ref={this._cell}
+            <div
+                style={style}
+                onClick={() => this._cell.current.focus()}
+            >
+                <label>{this.props.label}</label>
+                <Cell
+                    ref={this._cell}
                     onChange={(value) => this.props.onChange(this.props.register, value)}
                 />
             </div>
         );
     }
 
-    setValue(value) {
+    setValue(value: number) {
         this._cell.current.setValue(value);
     }
 }
