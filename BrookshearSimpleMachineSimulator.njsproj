@@ -31,7 +31,7 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="brookshearMachine.js">
+    <Content Include="brookshearMachine.ts">
       <SubType>Code</SubType>
     </Content>
     <Content Include="dist\app-bundle.js" />

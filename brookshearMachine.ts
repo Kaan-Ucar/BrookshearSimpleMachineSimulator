@@ -1,21 +1,14 @@
-﻿'use strict';
+﻿class BrookshearMachine {
+    public onStop = () => { };
+    public onProgramCounterChange = (pc) => { };
+    public onRegisterChange = (register, value) => { };
+    public onMemoryChange = (address, value) => { };
 
-class BrookshearMachine {
-    constructor() {
-        const REGISTERS_LENGTH = 16;
-        const MEMORY_LENGTH = 256;
-
-        this._programCounter = 0;
-        this._registers = new Uint8Array(REGISTERS_LENGTH);
-        this._memory = new Uint8Array(MEMORY_LENGTH);
-        this._running = false;
-        this._stepInterval = 2000;
-
-        this.onStop = () => { };
-        this.onProgramCounterChange = (pc) => { };
-        this.onRegisterChange = (register, value) => { };
-        this.onMemoryChange = (address, value) => { };
-    }
+    private _programCounter = 0;
+    private _registers = new Uint8Array(16);
+    private _memory = new Uint8Array(256);
+    private _running = false;
+    private _stepInterval = 2000;
 
     resetCPU() {
         this.setProgramCounter(0);
@@ -24,11 +17,11 @@ class BrookshearMachine {
             this.setRegister(i, 0);
     }
 
-    setStepInterval(ms) {
+    setStepInterval(ms: number) {
         this._stepInterval = ms;
     }
 
-    setProgramCounter(pc) {
+    setProgramCounter(pc: number) {
         if (pc === this._programCounter)
             return;
 
@@ -36,7 +29,7 @@ class BrookshearMachine {
         this.onProgramCounterChange(pc);
     }
 
-    setRegister(register, value) {
+    setRegister(register: number, value: number) {
         if (this._registers[register] === value)
             return;
 
@@ -44,7 +37,7 @@ class BrookshearMachine {
         this.onRegisterChange(register, value);
     }
 
-    setMemoryCell(address, value) {
+    setMemoryCell(address: number, value: number) {
         if (this._memory[address] === value)
             return;
 
