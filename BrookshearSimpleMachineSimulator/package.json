@@ -12,6 +12,7 @@
     "path": "^0.12.7",
     "radium": "^0.26.0",
     "react": "^16.13.0",
+    "react-ace": "^9.1.1",
     "react-dom": "^16.13.0",
     "ts-loader": "^6.2.1",
     "typescript": "^3.8.3",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@types/react": "^16.9.38",
     "@types/react-dom": "^16.9.8",
-    "@types/radium": "^0.24.2"
+    "@types/radium": "^0.24.2",
+    "@types/ace": "0.0.43"
   }
 }

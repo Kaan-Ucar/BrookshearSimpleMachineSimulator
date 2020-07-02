@@ -53,6 +53,12 @@ class ToolBar extends React.Component<any, any> {
                         label="Reset CPU"
                         onClick={this.props.onResetCPU}
                     />
+                    <ToolButton
+                        key="Build"
+                        icon="build"
+                        label="Build"
+                        onClick={this.props.onBuild}
+                    />
                     {runButton}
                     <ToolButton
                         key="Step Over"
