@@ -4,11 +4,13 @@ import ToolBar from "./toolBar";
 import CPU from "./cpu";
 import Memory from "./memory";
 import BrookshearMachine from "./brookshearMachine";
+import Editor from "./editor";
 
 export class App extends React.Component<any, any> {
     private _machine = new BrookshearMachine();
     private _cpu = React.createRef<CPU>();
     private _memory = React.createRef<Memory>();
+    private _editor = React.createRef<Editor>();
 
     constructor(props) {
         super(props);
@@ -43,6 +45,7 @@ export class App extends React.Component<any, any> {
                     onPause={() => this._machine.stop()}
                     onStepOver={() => this._machine.stepOver()}
                     onStepIntervalChange={(interval) => this._machine.setStepInterval(interval)}
+                    onBuild={() => this.handleBuild()}
                 />
                 <div style={mainStyle}>
                     <CPU ref={this._cpu}
@@ -54,6 +57,7 @@ export class App extends React.Component<any, any> {
                         memory={256}
                         onChange={(address, value) => this._machine.setMemoryCell(address, value)}
                     />
+                    <Editor ref={this._editor} />
                 </div>
             </React.Fragment>
         );
@@ -62,6 +66,11 @@ export class App extends React.Component<any, any> {
     handleRun() {
         this.setState({ running: true });
         this._machine.asyncRun();
+    }
+
+    handleBuild() {
+        this._machine.stop();
+        console.log(this._editor.current.getAllTokens());
     }
 }
 
