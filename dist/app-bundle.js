@@ -132,7 +132,7 @@ class App extends react_1.default.Component {
             alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval), onBuild: () => console.log(this._editor.current.getAllTokens()) }),
+            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval), onBuild: () => this.handleBuild() }),
             react_1.default.createElement("div", { style: mainStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
@@ -141,6 +141,10 @@ class App extends react_1.default.Component {
     handleRun() {
         this.setState({ running: true });
         this._machine.asyncRun();
+    }
+    handleBuild() {
+        this._machine.stop();
+        console.log(this._editor.current.getAllTokens());
     }
 }
 exports.App = App;
@@ -160,7 +164,7 @@ react_dom_1.default.render(react_1.default.createElement(App, null), document.ge
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AssemblyBrookshearHighlightRules", function() { return AssemblyBrookshearHighlightRules; });
-class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules {
+class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules { 
     constructor() {
         super();
 
@@ -168,42 +172,42 @@ class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/tex
             start:
                 [
                     {
-                        token: 'keyword.control.assembly',
-                        regex: '\\b(?:shit|load|store|move|add|or|and|xor|rotate|jump|halt)\\b',
+                        token: 'keyword.instruction',
+                        regex: '\\b(?:ldr|ldrc|str|mov|add|fadd|or|and|xor|ror|jmp|hlt)\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'constant.character.decimal.assembly',
+                        token: 'constant.operand.decimal',
                         regex: '\\b[0-9]+\\b'
                     },
                     {
-                        token: 'constant.character.hexadecimal.assembly',
+                        token: 'constant.operand.hexadecimal',
                         regex: '\\b0x[A-F0-9]+\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'constant.character.hexadecimal.assembly',
+                        token: 'constant.operand.hexadecimal',
                         regex: '\\b[A-F0-9]+h\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'entity.name.function.assembly',
+                        token: 'entity.label',
                         regex: '^[\\w.]+?:'
                     },
                     {
-                        token: 'entity.name.function.assembly',
+                        token: 'entity.label',
                         regex: '^[\\w.]+?\\b'
                     },
                     {
-                        token: 'comment.assembly',
+                        token: 'comment.comment',
                         regex: ';.*$'
                     },
                     {
-                        token: 'punctuation.comma.assembly',
+                        token: 'punctuation.comma',
                         regex: ','
                     },
                     {
-                        token: 'text.whitespace.assembly',
+                        token: 'text.whitespace',
                         regex: '\\s+'
                     }
                 ]
