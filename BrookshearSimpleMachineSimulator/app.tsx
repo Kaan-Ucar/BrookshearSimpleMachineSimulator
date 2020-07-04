@@ -14,7 +14,7 @@ export class App extends React.Component<any, any> {
 
     constructor(props) {
         super(props);
-
+        
         this.state = {
             running: false
         };
@@ -63,12 +63,12 @@ export class App extends React.Component<any, any> {
         );
     }
 
-    handleRun() {
+    private handleRun() {
         this.setState({ running: true });
         this._machine.asyncRun();
     }
 
-    handleBuild() {
+    private handleBuild() {
         this._machine.stop();
         console.log(this._editor.current.getAllTokens());
     }

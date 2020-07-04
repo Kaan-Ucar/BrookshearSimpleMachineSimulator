@@ -1,4 +1,4 @@
-export class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules {
+export class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules { 
     constructor() {
         super();
 
@@ -6,38 +6,42 @@ export class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/m
             start:
                 [
                     {
-                        token: 'keyword.control.assembly',
-                        regex: '\\b(?:shit|load|store|move|add|or|and|xor|rotate|jump|halt)\\b',
+                        token: 'keyword.instruction',
+                        regex: '\\b(?:ldr|ldrc|str|mov|add|fadd|or|and|xor|ror|jmp|hlt)\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'constant.character.decimal.assembly',
+                        token: 'constant.operand.decimal',
                         regex: '\\b[0-9]+\\b'
                     },
                     {
-                        token: 'constant.character.hexadecimal.assembly',
+                        token: 'constant.operand.hexadecimal',
                         regex: '\\b0x[A-F0-9]+\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'constant.character.hexadecimal.assembly',
+                        token: 'constant.operand.hexadecimal',
                         regex: '\\b[A-F0-9]+h\\b',
                         caseInsensitive: true
                     },
                     {
-                        token: 'entity.name.function.assembly',
+                        token: 'entity.label',
                         regex: '^[\\w.]+?:'
                     },
                     {
-                        token: 'comment.assembly',
+                        token: 'entity.label',
+                        regex: '^[\\w.]+?\\b'
+                    },
+                    {
+                        token: 'comment.comment',
                         regex: ';.*$'
                     },
                     {
-                        token: 'punctuation.comma.assembly',
+                        token: 'punctuation.comma',
                         regex: ','
                     },
                     {
-                        token: 'text.whitespace.assembly',
+                        token: 'text.whitespace',
                         regex: '\\s+'
                     }
                 ]

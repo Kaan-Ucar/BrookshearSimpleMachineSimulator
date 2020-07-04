@@ -1,6 +1,7 @@
 import React from "react";
 import Palette from "./palette";
 import AceEditor from "react-ace";
+import Token from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
 import AssemblyBrookshearMode from "./assemblyBrookshearMode";
 
@@ -35,7 +36,7 @@ class Editor extends React.Component<any, any> {
 
     getAllTokens() {
         const rows = this._editor.current.editor.getSession().getLength();
-
+        
         let tokens = [];
         for (let i = 0; i < rows; ++i)
             tokens.push(this._editor.current.editor.getSession().getTokens(i));
