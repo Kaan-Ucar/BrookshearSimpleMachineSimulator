@@ -43,6 +43,7 @@ export class App extends React.Component<any, any> {
                 <ToolBar
                     running={this.state.running}
                     onResetCPU={() => this._machine.resetCPU()}
+                    onResetMemory={() => this._machine.resetMemory()}
                     onRun={() => this.handleRun()}
                     onPause={() => this._machine.stop()}
                     onStepOver={() => this._machine.stepOver()}
