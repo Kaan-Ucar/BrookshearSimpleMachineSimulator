@@ -134,7 +134,7 @@ class App extends react_1.default.Component {
             alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval), onBuild: () => this.handleBuild() }),
+            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval), onBuild: () => this.handleBuild() }),
             react_1.default.createElement("div", { style: mainStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
@@ -65181,6 +65181,7 @@ class ToolBar extends react_1.default.Component {
         return (react_1.default.createElement("section", { style: style },
             react_1.default.createElement("div", { style: alignStyle },
                 react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
+                react_1.default.createElement(toolButton_1.default, { key: "Reset Memory", icon: "memory", label: "Reset Memory", onClick: this.props.onResetMemory }),
                 react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
                 runButton,
                 react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),

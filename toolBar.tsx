@@ -54,6 +54,12 @@ class ToolBar extends React.Component<any, any> {
                         onClick={this.props.onResetCPU}
                     />
                     <ToolButton
+                        key="Reset Memory"
+                        icon="memory"
+                        label="Reset Memory"
+                        onClick={this.props.onResetMemory}
+                    />
+                    <ToolButton
                         key="Build"
                         icon="build"
                         label="Build"
