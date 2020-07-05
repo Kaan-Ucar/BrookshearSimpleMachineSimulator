@@ -17,6 +17,11 @@
             this.setRegister(i, 0);
     }
 
+    resetMemory() {
+        for (let i = 0; i < this._memory.length; ++i)
+            this.setMemoryCell(i, 0);
+    }
+
     setStepInterval(ms: number) {
         this._stepInterval = ms;
     }
@@ -43,6 +48,13 @@
 
         this._memory[address] = value;
         this.onMemoryChange(address, value);
+    }
+
+    setMemory(values: Uint8Array, from: number = 0) {
+        const to = Math.min(this._memory.length, values.length);
+
+        for (let i = 0; i < to; ++i)
+            this.setMemoryCell(from + i, values[i]);
     }
 
     run() {

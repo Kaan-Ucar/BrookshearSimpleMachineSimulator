@@ -5,9 +5,11 @@ import CPU from "./cpu";
 import Memory from "./memory";
 import BrookshearMachine from "./brookshearMachine";
 import Editor from "./editor";
+import BrookshearAssembler from "./brookshearAssembler";
 
 export class App extends React.Component<any, any> {
     private _machine = new BrookshearMachine();
+    private _assembler = new BrookshearAssembler();
     private _cpu = React.createRef<CPU>();
     private _memory = React.createRef<Memory>();
     private _editor = React.createRef<Editor>();
@@ -69,8 +71,11 @@ export class App extends React.Component<any, any> {
     }
 
     private handleBuild() {
-        this._machine.stop();
-        console.log(this._editor.current.getAllTokens());
+        this._assembler.clear();
+        if (this._assembler.assemblyTokens(this._editor.current.getAllTokens()))
+            this._machine.stop();
+
+        this._machine.setMemory(this._assembler.getMachineCode());
     }
 }
 

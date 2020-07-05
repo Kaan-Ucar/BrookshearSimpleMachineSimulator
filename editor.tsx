@@ -1,10 +1,10 @@
 import React from "react";
 import Palette from "./palette";
 import AceEditor from "react-ace";
-import Token from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
 import AssemblyBrookshearMode from "./assemblyBrookshearMode";
-
+import BrookshearAssemblerToken from "./brookshearAssemblerToken";
+import Ace from "ace-builds";
 class Editor extends React.Component<any, any> {
     private _editor = React.createRef<AceEditor>();
 
@@ -36,10 +36,23 @@ class Editor extends React.Component<any, any> {
 
     getAllTokens() {
         const rows = this._editor.current.editor.getSession().getLength();
+
+        let tokens: BrookshearAssemblerToken[][] = [];
         
-        let tokens = [];
-        for (let i = 0; i < rows; ++i)
-            tokens.push(this._editor.current.editor.getSession().getTokens(i));
+        for (let i = 0; i < rows; ++i) {
+            const aceTokens = this._editor.current.editor.getSession().getTokens(i);
+            let rowTokens: BrookshearAssemblerToken[] = [];
+
+            let start = 0;
+            for (let j = 0; j < aceTokens.length; ++j) {
+                var types = aceTokens[j].type.split('.');
+                var value = aceTokens[j].value;
+                rowTokens.push(new BrookshearAssemblerToken(types, value.toString(), start, j));
+                start += value.length;
+            }
+
+            tokens.push(rowTokens);
+        }
 
         return tokens;
     }

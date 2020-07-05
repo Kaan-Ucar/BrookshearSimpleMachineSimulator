@@ -50,7 +50,7 @@ class Cell extends React.Component<any, any> {
         );
     }
 
-    handleChange(input: EventTarget & HTMLInputElement) {
+    private handleChange(input: EventTarget & HTMLInputElement) {
         this.setText(input.value, input.selectionEnd);
     }
 
