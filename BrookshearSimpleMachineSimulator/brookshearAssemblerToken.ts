@@ -22,3 +22,5 @@ class BrookshearAssemblerToken {
         this._types = types;
     }
 }
+
+export default BrookshearAssemblerToken;
