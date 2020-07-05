@@ -19,22 +19,20 @@ class BrookshearAssembler {
         return new Uint8Array(this._machineCode);
     }
 
-    assemblyTokens(lines: BrookshearAssemblerToken[][]) {
+    assemblyLines(lines: BrookshearAssemblerToken[][]) {
         let filteredLines: BrookshearAssemblerToken[][] = [];
 
         for (let line of lines)
             filteredLines.push(BrookshearAssembler.removeTypes(line, 1, ["whitespace", "comment"]));
 
-        const codeSize = this.defineLabels(filteredLines);
-
-        if (codeSize < 0)
+        if (!this.controlLines(filteredLines))
             return false;
 
-        this._machineCode = new Uint8Array(codeSize);
-        this._machineCodeIndex = 0;
+        for (let i = 0; i < filteredLines.length; ++i)
+            filteredLines[i] = BrookshearAssembler.removeTypes(filteredLines[i], 1, ["label"]);
 
-        for (let i = 0; i < lines.length; ++i)
-            if (!this.assemblyLine(i + 1, filteredLines[i]))
+        for (let i = 0; i < filteredLines.length; ++i)
+            if (!this.assemblyInstructionLine(i + 1, filteredLines[i]))
                 return false;
 
         const haltInstruction = parseInt("0xC0");
@@ -45,29 +43,51 @@ class BrookshearAssembler {
         return true;
     }
 
-    defineLabels(lines: BrookshearAssemblerToken[][]) {
+    private controlLines(lines: BrookshearAssemblerToken[][]) {
         let codeSize = 0;
 
         for (let i = 0; i < lines.length; ++i)
-            for (let token of lines[i]) {
-                if (token.getType(1) === "instruction")
-                    codeSize += 2;
-                else if (token.getType(1) === "label") {
-                    if (token.value[token.value.length - 1] === ':')
-                        token.value = token.value.slice(0, -1);
-                    else if (lines[i].length === 1)
-                        this.warning(i + 1, token.start + token.value.length, "label alone on a line without a colon might be in error");
+            if (lines[i].length > 0) {
+                const firstToken = lines[i][0];
 
-                    if (this._labels[token.value] !== undefined) {
-                        this.error(i + 1, token.start, "label '" + token.value + "' redefined");
-                        return -1;
+                if (firstToken.getType(1) === "instruction") {
+                    codeSize += 2;
+                }
+                else if (firstToken.getType(1) === "label") {
+                    if (firstToken.value[firstToken.value.length - 1] === ':')
+                        firstToken.value = firstToken.value.slice(0, -1);
+                    else if (lines[i].length === 1)
+                        this.warning(i + 1, firstToken.start + firstToken.value.length, "label alone on a line without a colon might be in error");
+
+                    if (this._labels[firstToken.value] !== undefined) {
+                        this.error(i + 1, firstToken.start, "label '" + firstToken.value + "' redefined");
+                        return false;
                     }
 
-                    this._labels[token.value] = codeSize;
+                    if (lines[i].length > 1) {
+                        const secondToken = lines[i][1];
+
+                        if (secondToken.getType(1) === "instruction") {
+                            codeSize += 2;
+                        }
+                        else {
+                            this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
+                            return false;
+                        }
+                    }
+                    this._labels[firstToken.value] = codeSize;
                 }
+                else {
+                    this.error(i + 1, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
+                    return false;
+                }
+
             }
 
-        return codeSize;
+        this._machineCode = new Uint8Array(codeSize);
+        this._machineCodeIndex = 0;
+
+        return true;
     }
 
     clear() {
@@ -93,43 +113,17 @@ class BrookshearAssembler {
         return filteredTokens;
     }
 
-    private assemblyLine(row: number, tokens: BrookshearAssemblerToken[]) {
-        if (tokens.length > 0) {
-            const firstToken = tokens[0];
+    private assemblyInstructionLine(row: number, line: BrookshearAssemblerToken[]) {
+        if (line.length === 0)
+            return true;
 
-            switch (firstToken.getType(1)) {
-                case "label":
-                    if (tokens.length > 1) {
-                        const secondToken = tokens[1];
-
-                        if (secondToken.getType(1) == "instruction")
-                            return this.assemblyInstructionLine(row, tokens.slice(1));
-
-                        this.error(row, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
-                        return false;
-                    }
-                    
-                    return true;
-
-                case "instruction":
-                    return this.assemblyInstructionLine(row, tokens);
-                    
-                default:
-                    this.error(row, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
-    private assemblyInstructionLine(row: number, tokens: BrookshearAssemblerToken[]) {
-        if (!this.evaluateUnknowns(row, tokens))
+        if (!this.evaluateUnknowns(row, line))
             return false;
 
-        const instruction = tokens[0].value.toLowerCase();
+        const instruction = line[0].value.toLowerCase();
         let opcode = 0;
         let operandDrafts: { offset, size }[];
+
         switch (instruction) {
             case "ldr":
                 opcode = 1;
@@ -192,41 +186,36 @@ class BrookshearAssembler {
                 break;
 
             default:
-                this.error(row, tokens[0].start, "Could not resolve instruction: " + instruction);
+                this.error(row, line[0].start, "Could not resolve instruction: " + instruction);
                 return false;
         }
 
-        return this.assemblyInstruction(row, opcode, operandDrafts, tokens);
-    }
-
-    private assemblyInstruction(row: number, opcode: number, operandDrafts: { offset, size }[], tokens: BrookshearAssemblerToken[]) {
-        if (operandDrafts.length > 0 && (tokens.length - 1) !== ((2 * operandDrafts.length) - 1)) {
-            this.error(row, tokens[0].start + tokens[0].value.length, "invalid combination of opcode and operands");
+        if (operandDrafts.length > 0 && (line.length - 1) !== ((2 * operandDrafts.length) - 1)) {
+            this.error(row, line[0].start + line[0].value.length, "invalid combination of opcode and operands");
             return false;
         }
 
         let operandTokens: BrookshearAssemblerToken[] = [];
         let i = 1;
-        while (i < tokens.length) {
-            if (tokens[i].getType(1) === "operand") {
-                operandTokens.push(tokens[i]);
+        while (i < line.length) {
+            if (line[i].getType(1) === "operand") {
+                operandTokens.push(line[i]);
             }
             else {
-                this.error(row, tokens[i].start, "operand expected, but found " + tokens[i].getType(1) + ": " + tokens[i].value);
+                this.error(row, line[i].start, "operand expected, but found " + line[i].getType(1) + ": " + line[i].value);
                 return false;
             }
 
             ++i;
-            if (i < tokens.length) {
-                if (tokens[i].getType(1) !== "comma") {
-                    this.error(row, tokens[i].start, "comma expected after operand, but found " + tokens[i].getType(1) + ": " + tokens[i].value);
+            if (i < line.length) {
+                if (line[i].getType(1) !== "comma") {
+                    this.error(row, line[i].start, "comma expected after operand, but found " + line[i].getType(1) + ": " + line[i].value);
                     return false;
                 }
 
                 ++i;
             }
         }
-        console.log("opcode: " + opcode);
 
         let halfBytes = [opcode, 0, 0, 0];
         for (let i = 0; i < operandTokens.length; ++i) {
@@ -239,7 +228,7 @@ class BrookshearAssembler {
             }
 
             for (let j = 0; j < operandDrafts[i].size; ++j)
-                halfBytes[operandDrafts[i].offset + j] = value >>> ((operandDrafts[i].size - 1 - j) * 4);
+                halfBytes[operandDrafts[i].offset + j] = (value >>> ((operandDrafts[i].size - 1 - j) * 4)) & 15;
         }
 
         this._machineCode[this._machineCodeIndex++] = (halfBytes[0] << 4) + halfBytes[1];

@@ -72,7 +72,7 @@ export class App extends React.Component<any, any> {
 
     private handleBuild() {
         this._assembler.clear();
-        if (this._assembler.assemblyTokens(this._editor.current.getAllTokens()))
+        if (this._assembler.assemblyLines(this._editor.current.getAllTokens()))
             this._machine.stop();
 
         this._machine.setMemory(this._assembler.getMachineCode());
