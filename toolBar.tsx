@@ -67,18 +67,24 @@ class ToolBar extends React.Component<any, any> {
                     onClick={this.props.onResetMemory}
                 />
                 <ToolButton
+                    key="Clear Editor"
+                    icon="restore_page"
+                    label="Clear Editor"
+                    onClick={this.props.onClearEditor}
+                />
+                <ToolButton
                     key="Build"
                     icon="build"
                     label="Build"
                     onClick={this.props.onBuild}
                 />
-                {runButton}
                 <ToolButton
                     key="Step Over"
                     icon="redo"
                     label="Step Over"
                     onClick={this.props.onStepOver}
                 />
+                {runButton}
                 <Slider label="Speed"
                     min={4000}
                     max={0}

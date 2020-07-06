@@ -49,6 +49,7 @@ export class App extends React.Component<any, any> {
                     onStepOver={() => this._machine.stepOver()}
                     onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
                     onBuild={() => this.handleBuild()}
+                    onClearEditor={() => this._editor.current.clear()}
                 />
                 <div style={mainStyle}>
                     <CPU ref={this._cpu}

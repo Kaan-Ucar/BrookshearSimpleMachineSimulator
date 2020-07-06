@@ -135,7 +135,7 @@ class App extends react_1.default.Component {
             alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild() }),
+            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clear() }),
             react_1.default.createElement("div", { style: mainStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
@@ -920,6 +920,9 @@ class Editor extends react_1.default.Component {
             tokens.push(rowTokens);
         }
         return tokens;
+    }
+    clear() {
+        this._editor.current.editor.getSession().setValue("");
     }
 }
 exports.default = Editor;
@@ -65326,9 +65329,10 @@ class ToolBar extends react_1.default.Component {
         return (react_1.default.createElement("section", { style: style },
             react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
             react_1.default.createElement(toolButton_1.default, { key: "Reset Memory", icon: "memory", label: "Reset Memory", onClick: this.props.onResetMemory }),
+            react_1.default.createElement(toolButton_1.default, { key: "Clear Editor", icon: "restore_page", label: "Clear Editor", onClick: this.props.onClearEditor }),
             react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
-            runButton,
             react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
+            runButton,
             react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepTimeChange }),
             react_1.default.createElement(infoBar_1.default, { ref: this._infoBar }),
             react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
