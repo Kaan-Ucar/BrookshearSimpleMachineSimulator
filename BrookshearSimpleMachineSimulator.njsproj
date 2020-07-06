@@ -42,7 +42,7 @@
     <Content Include="index.html">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="palette.js">
+    <Content Include="palette.ts">
       <SubType>Code</SubType>
     </Content>
     <Content Include="server.js" />
@@ -75,6 +75,9 @@
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="editor.tsx">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="infoBar.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="memory.tsx">

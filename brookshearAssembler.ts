@@ -1,8 +1,9 @@
 import BrookshearAssemblerToken from "./brookshearAssemblerToken";
 
 class BrookshearAssembler {
-    public onWarning = (row, column, message) => { console.log("warning(" + row + "," + column + "): " + message); }
-    public onError = (row, column, message) => { console.log("error(" + row + "," + column + "): " + message); }
+    public onWarning = (row: number, column: number, message: string) => { console.log("warning(" + row + "," + column + "): " + message); }
+    public onError = (row: number, column: number, message: string) => { console.log("error(" + row + "," + column + "): " + message); }
+
     private _labels = {};
     private _machineCode = new Uint8Array();
     private _machineCodeIndex = 0;

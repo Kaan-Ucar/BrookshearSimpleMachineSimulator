@@ -16,7 +16,7 @@ class CPU extends React.Component<any, any> {
     render() {
         const style = {
             backgroundColor: Palette.cpuBackground,
-            color: Palette.cpu,
+            color: Palette.passive,
             paddingTop: "16px",
             minWidth: "200px",
             display: "flex",
@@ -24,7 +24,7 @@ class CPU extends React.Component<any, any> {
         } as React.CSSProperties;
 
         const hrStyle = {
-            borderColor: Palette.cpu,
+            borderColor: Palette.passive,
             width: "100%"
         } as React.CSSProperties;
 

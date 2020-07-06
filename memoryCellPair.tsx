@@ -32,7 +32,7 @@ class MemoryCellPair extends React.Component<any, any> {
             },
 
             ":hover": {
-                background: Palette.memoryHighlightBackground
+                background: Palette.highlightBackground
             }
         } as React.CSSProperties;
 
@@ -46,7 +46,7 @@ class MemoryCellPair extends React.Component<any, any> {
             },
 
             ":hover": {
-                background: Palette.memoryHighlightBackground
+                background: Palette.highlightBackground
             }
         } as React.CSSProperties;
 
