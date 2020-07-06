@@ -115,13 +115,14 @@ class App extends react_1.default.Component {
         this._cpu = react_1.default.createRef();
         this._memory = react_1.default.createRef();
         this._editor = react_1.default.createRef();
-        this.state = {
-            running: false
-        };
-        this._machine.onStop = () => this.setState({ running: false });
+        this._toolBar = react_1.default.createRef();
+        this._machine.onStop = () => this._toolBar.current.setRunning(false);
         this._machine.onProgramCounterChange = (pc) => this._cpu.current.setProgramCounter(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
         this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
+        this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
+        this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
+        this._machine.onError = (message) => this._toolBar.current.setError(message);
     }
     render() {
         const mainStyle = {
@@ -134,21 +135,25 @@ class App extends react_1.default.Component {
             alighItems: "stretch"
         };
         return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolBar_1.default, { running: this.state.running, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepIntervalChange: (interval) => this._machine.setStepInterval(interval), onBuild: () => this.handleBuild() }),
+            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild() }),
             react_1.default.createElement("div", { style: mainStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
                 react_1.default.createElement(editor_1.default, { ref: this._editor }))));
     }
     handleRun() {
-        this.setState({ running: true });
-        this._machine.asyncRun();
+        this._toolBar.current.setRunning(true);
+        this._machine.run();
     }
     handleBuild() {
         this._assembler.clear();
-        if (this._assembler.assemblyLines(this._editor.current.getAllTokens()))
-            this._machine.stop();
+        if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
+            this._toolBar.current.setError("BUILD FAILED", true);
+            return;
+        }
+        this._machine.stop();
         this._machine.setMemory(this._assembler.getMachineCode());
+        this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
     }
 }
 exports.App = App;
@@ -495,11 +500,15 @@ class BrookshearMachine {
         this.onProgramCounterChange = (pc) => { };
         this.onRegisterChange = (register, value) => { };
         this.onMemoryChange = (address, value) => { };
+        this.onProgressChange = (progress) => { };
+        this.onInfo = (message) => { };
+        this.onError = (message) => { };
         this._programCounter = 0;
         this._registers = new Uint8Array(16);
         this._memory = new Uint8Array(256);
         this._running = false;
-        this._stepInterval = 2000;
+        this._stepTime = 2000;
+        this._progress = 0;
     }
     resetCPU() {
         this.setProgramCounter(0);
@@ -510,10 +519,11 @@ class BrookshearMachine {
         for (let i = 0; i < this._memory.length; ++i)
             this.setMemoryCell(i, 0);
     }
-    setStepInterval(ms) {
-        this._stepInterval = ms;
+    setStepTime(ms) {
+        this._stepTime = ms;
     }
     setProgramCounter(pc) {
+        this.setProgress(0);
         if (pc === this._programCounter)
             return;
         this._programCounter = pc;
@@ -536,78 +546,115 @@ class BrookshearMachine {
         for (let i = 0; i < to; ++i)
             this.setMemoryCell(from + i, values[i]);
     }
-    run() {
+    setProgress(progress) {
+        this._progress = Math.min(progress, 100);
+        this.onProgressChange(this._progress);
+    }
+    async run() {
+        if (this._running)
+            return;
         this._running = true;
         do {
-            this.stepOver();
+            await this.runStep(true);
         } while (this._running);
-    }
-    async asyncRun() {
-        this._running = true;
-        this.stepOver();
-        while (this._running) {
-            await new Promise(resolve => setTimeout(resolve, this._stepInterval));
-            if (this._running)
-                this.stepOver();
-        }
     }
     stop() {
         this._running = false;
         this.onStop();
     }
+    async waitProgress() {
+        const RESOLUTION = 1000 / 60; // 60fps
+        while (this._running) {
+            await new Promise((resolve) => setTimeout(resolve, RESOLUTION));
+            this.setProgress(this._progress + (RESOLUTION / this._stepTime * 100));
+            if (this._progress >= 100)
+                return true;
+        }
+        return false;
+    }
     stepOver() {
+        if (this._running)
+            this._progress = 100;
+        else
+            this.runStep(false);
+    }
+    async runStep(wait) {
         const opcode = this._memory[this._programCounter] >>> 4;
         const operandA = this._memory[this._programCounter] & 15;
         const operandBC = this._memory[this._programCounter + 1];
         const operandB = operandBC >>> 4;
         const operandC = operandBC & 15;
+        const strA = operandA.toString(16).toUpperCase();
+        const strBC = operandBC.toString(16).padStart(2, "0").toUpperCase();
+        const strB = operandB.toString(16).toUpperCase();
+        const strC = operandC.toString(16).toUpperCase();
+        let message = "";
+        let instruction = () => { };
         switch (opcode) {
             case 1: // Copy the content of memory cell BC to register A.
-                this.setRegister(operandA, this._memory[operandBC]);
+                message = "Copy the content of memory cell " + strBC + " to register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._memory[operandBC]); };
                 break;
             case 2: // Copy the bit-string BC to register A.
-                this.setRegister(operandA, operandBC);
+                message = "Copy the bit-string " + strBC + " to register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, operandBC); };
                 break;
             case 3: // Copy the content of register A to memory cell BC.
-                this.setMemoryCell(operandBC, this._registers[operandA]);
+                message = "Copy the content of register " + strA + " to memory cell " + strBC + ".";
+                instruction = () => { this.setMemoryCell(operandBC, this._registers[operandA]); };
                 break;
             case 4: // Copy the content of register B to register C.
-                this.setRegister(operandC, this._registers[operandB]);
+                message = "Copy the content of register " + strB + " to register " + strC + ".";
+                instruction = () => { this.setRegister(operandC, this._registers[operandB]); };
                 break;
             case 5: // Add the content of register B and register C, and put the result in register A. Data is interpreted as integers in two's-complement notation.
-                this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]);
+                message = "Add the content of register " + strB + " and register " + strC + " as integers, and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
                 break;
             case 6: // Add the content of register B and register C, and put the result in register A. Data is interpreted as floats in floating point notation.
-                //FLOAT
-                this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]);
+                message = "Add the content of register " + strB + " and register " + strC + " as floats, and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
                 break;
             case 7: // Bitwise OR the content of register B and C, and put the result in register A.
-                this.setRegister(operandA, this._registers[operandB] | this._registers[operandC]);
+                message = "Bitwise OR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] | this._registers[operandC]); };
                 break;
             case 8: // Bitwise AND the content of register B and C, and put the result in register A.
-                this.setRegister(operandA, this._registers[operandB] & this._registers[operandC]);
+                message = "Bitwise AND the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] & this._registers[operandC]); };
                 break;
             case 9: // Bitwise XOR the content of register B and C, and put the result in register A.
-                this.setRegister(operandA, this._registers[operandB] ^ this._registers[operandC]);
+                message = "Bitwise XOR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] ^ this._registers[operandC]); };
                 break;
             case 10: // Rotate the content of register A cyclically right C steps.
-                this.setRegister(operandA, (this._registers[operandA] >>> this._registers[operandC]) | (this._registers[operandA] << (8 - this._registers[operandC])));
+                message = "Rotate the content of register " + strA + " cyclically right " + strC + " steps.";
+                instruction = () => { this.setRegister(operandA, (this._registers[operandA] >>> this._registers[operandC]) | (this._registers[operandA] << (8 - this._registers[operandC]))); };
                 break;
             case 11: // Jump to instruction in memory cell BC if the content of register A equals the content of register 0.
-                if (this._registers[operandA] === this._registers[0])
-                    this.setProgramCounter(operandBC - 2);
+                message = "Jump to instruction in memory cell " + strBC + " if the content of register A equals the content of register 0.";
+                instruction = () => {
+                    if (this._registers[operandA] === this._registers[0])
+                        this._programCounter = operandBC - 2;
+                };
                 break;
             case 12: // Halt execution.
+                this.onInfo("Halt execution.");
                 this.stop();
                 return;
-            case 13: // Jump to instruction in memory cell BC if the content of register A is greater than (>) the content of register 0. Data is interpreted as integers in two's-complement notation.
-                if (this._registers[operandA] > this._registers[0])
-                    this.setProgramCounter(operandBC - 2);
-            default:
+            default: // Opcode not found. Halted.
+                this.onError("Opcode not found. Halted.");
                 this.stop();
                 return;
         }
-        this.setProgramCounter(this._programCounter + 2);
+        this.onInfo(message);
+        let canceled = false;
+        if (wait)
+            canceled = !await this.waitProgress();
+        if (!canceled) {
+            instruction();
+            this.setProgramCounter(this._programCounter + 2);
+        }
     }
 }
 exports.default = BrookshearMachine;
@@ -630,7 +677,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class Cell extends react_1.default.Component {
     constructor(props) {
         super(props);
@@ -654,10 +701,10 @@ class Cell extends react_1.default.Component {
             color: palette_1.default.default,
             borderStyle: "solid",
             borderWidth: "2px",
-            borderColor: palette_1.default.memory,
+            borderColor: palette_1.default.passive,
             borderRadius: "4px",
             ":focus": {
-                borderColor: "#d31ac4"
+                borderColor: palette_1.default.focus
             }
         };
         return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) }));
@@ -700,7 +747,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const cpuCell_1 = __importDefault(__webpack_require__(/*! ./cpuCell */ "./cpuCell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class CPU extends react_1.default.Component {
     constructor(props) {
         super(props);
@@ -712,14 +759,14 @@ class CPU extends react_1.default.Component {
     render() {
         const style = {
             backgroundColor: palette_1.default.cpuBackground,
-            color: palette_1.default.cpu,
+            color: palette_1.default.passive,
             paddingTop: "16px",
             minWidth: "200px",
             display: "flex",
             flexDirection: "column"
         };
         const hrStyle = {
-            borderColor: palette_1.default.cpu,
+            borderColor: palette_1.default.passive,
             width: "100%"
         };
         const registers = [];
@@ -758,7 +805,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
 const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class CPUCell extends react_1.default.Component {
     constructor() {
         super(...arguments);
@@ -772,7 +819,7 @@ class CPUCell extends react_1.default.Component {
             alignItems: "center",
             padding: "4px 16px",
             ":hover": {
-                background: palette_1.default.cpuHighlightBackground
+                background: palette_1.default.highlightBackground
             },
             ":focus": {
                 color: palette_1.default.focus
@@ -880,6 +927,100 @@ exports.default = Editor;
 
 /***/ }),
 
+/***/ "./infoBar.tsx":
+/*!*********************!*\
+  !*** ./infoBar.tsx ***!
+  \*********************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
+class infoBar extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            progress: 0,
+            message: "",
+            messageColor: "",
+            bold: false,
+            icon: ""
+        };
+    }
+    render() {
+        const style = {
+            position: "relative",
+            flexGrow: 1,
+            background: "none",
+        };
+        const progressStyle = {
+            position: "absolute",
+            height: "100%",
+            width: "100%",
+            clipPath: "inset(0 " + (100 - this.state.progress) + "% 0 0)",
+            background: palette_1.default.progress,
+        };
+        const messageStyle = {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            color: this.state.messageColor
+        };
+        const textStyle = {
+            textAlign: "center",
+            fontFamily: "arial",
+            fontWeight: this.state.bold ? "bold" : "normal"
+        };
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement("div", { key: "progress", style: progressStyle }),
+            react_1.default.createElement("div", { key: "message", style: messageStyle },
+                react_1.default.createElement("i", { className: "material-icons" }, this.state.icon),
+                react_1.default.createElement("span", { style: textStyle }, this.state.message))));
+    }
+    setProgress(progress) {
+        this.setState({ progress: progress });
+    }
+    setInfo(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.passive,
+            bold: bold,
+            icon: "info_outline"
+        });
+    }
+    setError(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.error,
+            bold: bold,
+            icon: "error_outline"
+        });
+    }
+    setSuccess(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.success,
+            bold: bold,
+            icon: "check"
+        });
+    }
+}
+exports.default = infoBar;
+
+
+/***/ }),
+
 /***/ "./memory.tsx":
 /*!********************!*\
   !*** ./memory.tsx ***!
@@ -895,7 +1036,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const memoryCellPair_1 = __importDefault(__webpack_require__(/*! ./memoryCellPair */ "./memoryCellPair.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class Memory extends react_1.default.Component {
     constructor(props) {
         super(props);
@@ -906,7 +1047,7 @@ class Memory extends react_1.default.Component {
     render() {
         const style = {
             backgroundColor: palette_1.default.memoryBackground,
-            color: palette_1.default.memory,
+            color: palette_1.default.passive,
             flexGrow: 1,
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
@@ -947,7 +1088,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
 const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class MemoryCellPair extends react_1.default.Component {
     constructor() {
         super(...arguments);
@@ -975,7 +1116,7 @@ class MemoryCellPair extends react_1.default.Component {
                 color: palette_1.default.focus
             },
             ":hover": {
-                background: palette_1.default.memoryHighlightBackground
+                background: palette_1.default.highlightBackground
             }
         };
         const secondCellStyle = {
@@ -986,7 +1127,7 @@ class MemoryCellPair extends react_1.default.Component {
                 color: palette_1.default.focus
             },
             ":hover": {
-                background: palette_1.default.memoryHighlightBackground
+                background: palette_1.default.highlightBackground
             }
         };
         const labelStyle = {
@@ -65062,33 +65203,31 @@ module.exports = function(module) {
 
 /***/ }),
 
-/***/ "./palette.js":
+/***/ "./palette.ts":
 /*!********************!*\
-  !*** ./palette.js ***!
+  !*** ./palette.ts ***!
   \********************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const Palette = {
     default: "white",
+    passive: "#26aab3",
     focus: "#d31ac4",
+    error: "red",
+    success: "green",
+    highlightBackground: "#2e0e40",
     toolBarBackground: "#000a1b",
-    toolBar: "white",
     toolBarHighlightBackground: "#132044",
-    toolBarHighlight: "#d31ac4",
     cpuBackground: "#030e20",
-    cpu: "#26aab3",
-    cpuHighlightBackground: "#2e0e40",
-    cpuHighlight: "#26aab3",
     memoryBackground: "#08162e",
-    memory: "#26aab3",
-    memoryHighlightBackground: "#2e0e40",
-    memoryHighlight: "#26aab3"
-}
+    progress: "#032a3a"
+};
+exports.default = Palette;
 
-/* harmony default export */ __webpack_exports__["default"] = (Palette);
 
 /***/ }),
 
@@ -65107,7 +65246,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class Slider extends react_1.default.Component {
     render() {
         const reverse = this.props.min > this.props.max;
@@ -65115,7 +65254,7 @@ class Slider extends react_1.default.Component {
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
-            color: palette_1.default.toolBar,
+            color: palette_1.default.default,
             background: "none",
             fontFamily: "arial",
             fontSize: "small",
@@ -65123,7 +65262,7 @@ class Slider extends react_1.default.Component {
             padding: "8px",
             direction: reverse ? "rtl" : "ltr",
             ":hover": {
-                color: palette_1.default.toolBarHighlight,
+                color: palette_1.default.focus,
                 background: palette_1.default.toolBarHighlightBackground
             }
         };
@@ -65153,42 +65292,62 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const toolButton_1 = __importDefault(__webpack_require__(/*! ./toolButton */ "./toolButton.tsx"));
 const slider_1 = __importDefault(__webpack_require__(/*! ./slider */ "./slider.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
+const infoBar_1 = __importDefault(__webpack_require__(/*! ./infoBar */ "./infoBar.tsx"));
 class ToolBar extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._infoBar = react_1.default.createRef();
+        this.state = {
+            running: false
+        };
+    }
     render() {
+        console.log("toolbar rendered");
         const style = {
             position: "fixed",
             top: 0,
             width: "100%",
             display: "flex",
             flexWrap: "wrap",
+            overflow: "hidden",
             flexShrink: 0,
-            justifyContent: "space-between",
             backgroundColor: palette_1.default.toolBarBackground,
-            color: palette_1.default.toolBar
-        };
-        const alignStyle = {
-            display: "flex",
+            color: palette_1.default.default,
             alignItems: "stretch"
         };
         let runButton;
-        if (this.props.running) {
+        if (this.state.running) {
             runButton = (react_1.default.createElement(toolButton_1.default, { key: "Pause", icon: "pause", label: "Pause", onClick: this.props.onPause }));
         }
         else {
             runButton = (react_1.default.createElement(toolButton_1.default, { key: "Run", icon: "play_arrow", label: "Run", onClick: this.props.onRun }));
         }
         return (react_1.default.createElement("section", { style: style },
-            react_1.default.createElement("div", { style: alignStyle },
-                react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
-                react_1.default.createElement(toolButton_1.default, { key: "Reset Memory", icon: "memory", label: "Reset Memory", onClick: this.props.onResetMemory }),
-                react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
-                runButton,
-                react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
-                react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepIntervalChange })),
-            react_1.default.createElement("div", { style: alignStyle },
-                react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
-                    react_1.default.createElement(toolButton_1.default, { key: "Source Code", icon: "code", label: "Source Code", onClick: () => { } })))));
+            react_1.default.createElement(toolButton_1.default, { key: "Reset CPU", icon: "settings_backup_restore", label: "Reset CPU", onClick: this.props.onResetCPU }),
+            react_1.default.createElement(toolButton_1.default, { key: "Reset Memory", icon: "memory", label: "Reset Memory", onClick: this.props.onResetMemory }),
+            react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
+            runButton,
+            react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
+            react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepTimeChange }),
+            react_1.default.createElement(infoBar_1.default, { ref: this._infoBar }),
+            react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
+                react_1.default.createElement(toolButton_1.default, { key: "Source Code", icon: "code", label: "Source Code", onClick: () => { } }))));
+    }
+    setRunning(running) {
+        this.setState({ running: running });
+    }
+    setProgress(progress) {
+        this._infoBar.current.setProgress(progress);
+    }
+    setInfo(message, bold = false) {
+        this._infoBar.current.setInfo(message, bold);
+    }
+    setError(message, bold = false) {
+        this._infoBar.current.setError(message, bold);
+    }
+    setSuccess(message, bold = false) {
+        this._infoBar.current.setSuccess(message, bold);
     }
 }
 exports.default = ToolBar;
@@ -65211,13 +65370,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class ToolButton extends react_1.default.Component {
     render() {
         const style = {
             display: "flex",
             flexDirection: "column",
-            color: palette_1.default.toolBar,
+            color: palette_1.default.default,
             justifyContent: "center",
             alignItems: "center",
             padding: "8px",
@@ -65227,7 +65386,7 @@ class ToolButton extends react_1.default.Component {
             cursor: "pointer",
             outline: "none",
             ":hover": {
-                color: palette_1.default.toolBarHighlight,
+                color: palette_1.default.focus,
                 background: palette_1.default.toolBarHighlightBackground
             }
         };

@@ -6,6 +6,7 @@ import Memory from "./memory";
 import BrookshearMachine from "./brookshearMachine";
 import Editor from "./editor";
 import BrookshearAssembler from "./brookshearAssembler";
+import Palette from "./palette"
 
 export class App extends React.Component<any, any> {
     private _machine = new BrookshearMachine();
@@ -13,18 +14,18 @@ export class App extends React.Component<any, any> {
     private _cpu = React.createRef<CPU>();
     private _memory = React.createRef<Memory>();
     private _editor = React.createRef<Editor>();
+    private _toolBar = React.createRef<ToolBar>();
 
     constructor(props) {
         super(props);
-        
-        this.state = {
-            running: false
-        };
 
-        this._machine.onStop = () => this.setState({ running: false });
+        this._machine.onStop = () => this._toolBar.current.setRunning(false);
         this._machine.onProgramCounterChange = (pc) => this._cpu.current.setProgramCounter(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
         this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
+        this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
+        this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
+        this._machine.onError = (message) => this._toolBar.current.setError(message);
     }
 
     render() {
@@ -40,14 +41,13 @@ export class App extends React.Component<any, any> {
 
         return (
             <React.Fragment>
-                <ToolBar
-                    running={this.state.running}
+                <ToolBar ref={this._toolBar}
                     onResetCPU={() => this._machine.resetCPU()}
                     onResetMemory={() => this._machine.resetMemory()}
                     onRun={() => this.handleRun()}
                     onPause={() => this._machine.stop()}
                     onStepOver={() => this._machine.stepOver()}
-                    onStepIntervalChange={(interval) => this._machine.setStepInterval(interval)}
+                    onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
                     onBuild={() => this.handleBuild()}
                 />
                 <div style={mainStyle}>
@@ -67,16 +67,20 @@ export class App extends React.Component<any, any> {
     }
 
     private handleRun() {
-        this.setState({ running: true });
-        this._machine.asyncRun();
+        this._toolBar.current.setRunning(true);
+        this._machine.run();
     }
 
     private handleBuild() {
         this._assembler.clear();
-        if (this._assembler.assemblyLines(this._editor.current.getAllTokens()))
-            this._machine.stop();
+        if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
+            this._toolBar.current.setError("BUILD FAILED", true);
+            return;
+        }
 
+        this._machine.stop();
         this._machine.setMemory(this._assembler.getMachineCode());
+        this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
     }
 }
 

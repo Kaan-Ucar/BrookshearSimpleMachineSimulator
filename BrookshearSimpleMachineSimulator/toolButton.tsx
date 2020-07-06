@@ -7,7 +7,7 @@ class ToolButton extends React.Component<any, any> {
         const style = {
             display: "flex",
             flexDirection: "column",
-            color: Palette.toolBar,
+            color: Palette.default,
             justifyContent: "center",
             alignItems: "center",
             padding: "8px",
@@ -18,7 +18,7 @@ class ToolButton extends React.Component<any, any> {
             outline: "none",
 
             ":hover": {
-                color: Palette.toolBarHighlight,
+                color: Palette.focus,
                 background: Palette.toolBarHighlightBackground
             }
         } as React.CSSProperties;

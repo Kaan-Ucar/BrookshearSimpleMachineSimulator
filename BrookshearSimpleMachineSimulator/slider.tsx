@@ -10,7 +10,7 @@ class Slider extends React.Component<any, any> {
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
-            color: Palette.toolBar,
+            color: Palette.default,
             background: "none",
             fontFamily: "arial",
             fontSize: "small",
@@ -19,7 +19,7 @@ class Slider extends React.Component<any, any> {
             direction: reverse ? "rtl" : "ltr",
 
             ":hover": {
-                color: Palette.toolBarHighlight,
+                color: Palette.focus,
                 background: Palette.toolBarHighlightBackground
             }
         } as React.CSSProperties;

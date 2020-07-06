@@ -29,11 +29,11 @@ class Cell extends React.Component<any, any> {
             color: Palette.default,
             borderStyle: "solid",
             borderWidth: "2px",
-            borderColor: Palette.memory,
+            borderColor: Palette.passive,
             borderRadius: "4px",
 
             ":focus": {
-                borderColor: "#d31ac4"
+                borderColor: Palette.focus
             }
         } as React.CSSProperties;
 

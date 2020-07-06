@@ -15,7 +15,7 @@ class CPUCell extends React.Component<any, any> {
             padding: "4px 16px",
 
             ":hover": {
-                background: Palette.cpuHighlightBackground
+                background: Palette.highlightBackground
             },
 
             ":focus": {

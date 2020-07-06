@@ -15,7 +15,7 @@ class Memory extends React.Component<any, any> {
     render() {
         const style = {
             backgroundColor: Palette.memoryBackground,
-            color: Palette.memory,
+            color: Palette.passive,
             flexGrow: 1,
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
