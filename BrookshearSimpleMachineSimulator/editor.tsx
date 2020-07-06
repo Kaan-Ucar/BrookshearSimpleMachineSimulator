@@ -88,6 +88,10 @@ class Editor extends React.Component<any, any> {
 
         return tokens;
     }
+
+    clear() {
+        this._editor.current.editor.getSession().setValue("");
+    }
 }
 
 export default Editor;
