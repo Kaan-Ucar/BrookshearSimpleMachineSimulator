@@ -40,7 +40,6 @@ class BrookshearAssembler {
         if (this._machineCode.length > 0 && this._machineCode[this._machineCode.length - 2] !== haltInstruction)
             this.warning(lines.length, 0, "No halt instruction at end of program");
 
-        console.log("build successfull");
         return true;
     }
 
