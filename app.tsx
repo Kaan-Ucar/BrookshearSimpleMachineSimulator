@@ -12,7 +12,7 @@ export class App extends React.Component<any, any> {
     private _assembler = new BrookshearAssembler();
     private _cpu = React.createRef<CPU>();
     private _memory = React.createRef<Memory>();
-    private _editor = React.createRef<Editor>();
+    private _editor = React.createRef<any>();
     private _toolBar = React.createRef<ToolBar>();
 
     constructor(props) {
@@ -85,12 +85,14 @@ export class App extends React.Component<any, any> {
         this._editor.current.clearConsole();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
+            this._editor.current.appendMessage("Build failed.");
             return;
         }
 
         this._machine.stop();
         this._machine.setMemory(this._assembler.getMachineCode());
         this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
+        this._editor.current.appendMessage("Build successful.");
     }
 }
 

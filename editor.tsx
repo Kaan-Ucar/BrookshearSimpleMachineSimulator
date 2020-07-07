@@ -1,14 +1,22 @@
 import React from "react";
+import Radium from "radium";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
 import "ace-builds/src-noconflict/theme-terminal";
 import AssemblyBrookshearMode from "./assemblyBrookshearMode";
 import BrookshearAssemblerToken from "./brookshearAssemblerToken";
+import Palette from "./palette";
 
 class Editor extends React.Component<any, any> {
     private _editor = React.createRef<AceEditor>();
     private _console = React.createRef<AceEditor>();
-    
+
+    constructor(props) {
+        super(props);
+
+        this.state = { consoleVisible: false };
+    }
+
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new AssemblyBrookshearMode());
         this._console.current.editor.getSession().setOption("useWorker", false);
@@ -55,18 +63,39 @@ class Editor extends React.Component<any, any> {
         } as React.CSSProperties;
         
         const editorStyle = {
-            flexGrow: 3
+            flexGrow: 4,
+            position: "relative"
         } as React.CSSProperties;
 
         const consoleStyle = {
-            flexGrow: 1,
-            position: "relative"
+            flexGrow: this.state.consoleVisible ? 1 : 0,
+            transition: "flex-grow 0.3s"
         } as React.CSSProperties;
 
         const fillStyle = {
             width: "100%",
             height: "100%"
         } as React.CSSProperties;
+
+        const consoleButtonStyle = {
+            position: "absolute",
+            bottom: 0,
+            right: "20px",
+            color: Palette.default,
+            background: "black",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            borderTopLeftRadius: "25%",
+            borderTopRightRadius: "25%",
+
+            ":hover": {
+                color: Palette.focus,
+                background: Palette.toolBarHighlightBackground
+            }
+        } as React.CSSProperties;
+
+        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
 
         return (
             <div style={style}>
@@ -82,6 +111,12 @@ class Editor extends React.Component<any, any> {
                         showPrintMargin={false}
                         wrapEnabled={true}
                     />
+                    <button
+                        style={consoleButtonStyle}
+                        onClick={() => this.toggleConsoleVisibility()}
+                    >
+                        <i className="material-icons">{consoleButtonIcon}</i>
+                    </button>
                 </div>
                 <div
                     key="console"
@@ -124,6 +159,11 @@ class Editor extends React.Component<any, any> {
         return tokens;
     }
 
+    toggleConsoleVisibility() {
+        this.setState({ consoleVisible: !this.state.consoleVisible });
+        setTimeout(() => this._console.current.editor.resize(), 300);
+    }
+
     clearEditor() {
         this._editor.current.editor.getSession().setValue("");
     }
@@ -133,22 +173,24 @@ class Editor extends React.Component<any, any> {
     }
 
     appendWarning(row, column, message) {
-        let session = this._console.current.editor.getSession();
-        const length = session.getLength();
-        session.insert({ row: length, column: 0 }, "warning(" + row + "," + column + "): " + message + "\n");
-        let annotations = session.getAnnotations();
-        annotations.push({ row: length - 1, column: 20, text: message, type: "warning" });
-        session.setAnnotations(annotations);
+        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
     }
 
     appendError(row, column, message) {
+        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    }
+
+    appendMessage(message: string, annotation = "") {
         let session = this._console.current.editor.getSession();
         const length = session.getLength();
-        session.insert({ row: length, column: 0 }, "error(" + row + "," + column + "): " + message + "\n");
-        let annotations = session.getAnnotations();
-        annotations.push({ row: length - 1, column: 10, text: message, type: "error" });
-        session.setAnnotations(annotations);
+        session.insert({ row: length, column: 0 }, message + "\n");
+        
+        if (annotation !== "") {
+            let annotations = session.getAnnotations();
+            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
+            session.setAnnotations(annotations);
+        }
     }
 }
 
-export default Editor;
+export default Radium(Editor);
