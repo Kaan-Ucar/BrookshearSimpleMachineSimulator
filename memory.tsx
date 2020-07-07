@@ -21,6 +21,7 @@ class Memory extends React.Component<any, any> {
             gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
             gridTemplateRows: "repeat(auto-fill, minmax(30px, 1fr))",
             padding: "16px",
+            overflow: "auto"
         } as React.CSSProperties;
 
         const cellPairs = [];

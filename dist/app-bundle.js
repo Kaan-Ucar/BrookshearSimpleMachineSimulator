@@ -123,20 +123,27 @@ class App extends react_1.default.Component {
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
+        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
+        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
     }
     render() {
         const mainStyle = {
-            minHeight: "calc(100vh - 55px)",
+            height: "100vh",
             width: "100%",
-            marginTop: "55px",
             display: "flex",
+            flexDirection: "column"
+        };
+        const contentStyle = {
+            display: "flex",
+            flexGrow: 1,
             flexDirection: "row",
             alignContent: "stretch",
-            alighItems: "stretch"
+            alighItems: "stretch",
+            overflowY: "auto"
         };
-        return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clear() }),
-            react_1.default.createElement("div", { style: mainStyle },
+        return (react_1.default.createElement("div", { style: mainStyle },
+            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
+            react_1.default.createElement("div", { style: contentStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
                 react_1.default.createElement(editor_1.default, { ref: this._editor }))));
@@ -147,6 +154,7 @@ class App extends react_1.default.Component {
     }
     handleBuild() {
         this._assembler.clear();
+        this._editor.current.clearConsole();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
             return;
@@ -276,7 +284,6 @@ class BrookshearAssembler {
         const haltInstruction = parseInt("0xC0");
         if (this._machineCode.length > 0 && this._machineCode[this._machineCode.length - 2] !== haltInstruction)
             this.warning(lines.length, 0, "No halt instruction at end of program");
-        console.log("build successfull");
         return true;
     }
     controlLines(lines) {
@@ -763,7 +770,9 @@ class CPU extends react_1.default.Component {
             paddingTop: "16px",
             minWidth: "200px",
             display: "flex",
-            flexDirection: "column"
+            flexDirection: "column",
+            overflowX: "hidden",
+            overflowY: "auto"
         };
         const hrStyle = {
             borderColor: palette_1.default.passive,
@@ -854,15 +863,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
 __webpack_require__(/*! ace-builds/src-noconflict/theme-cobalt */ "./node_modules/ace-builds/src-noconflict/theme-cobalt.js");
+__webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
 const assemblyBrookshearMode_1 = __importDefault(__webpack_require__(/*! ./assemblyBrookshearMode */ "./assemblyBrookshearMode.js"));
 const brookshearAssemblerToken_1 = __importDefault(__webpack_require__(/*! ./brookshearAssemblerToken */ "./brookshearAssemblerToken.ts"));
 class Editor extends react_1.default.Component {
     constructor() {
         super(...arguments);
         this._editor = react_1.default.createRef();
+        this._console = react_1.default.createRef();
     }
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
+        this._console.current.editor.getSession().setOption("useWorker", false);
     }
     render() {
         const fibonacciExample = "; Fibonacci Numbers \n" +
@@ -895,14 +907,28 @@ class Editor extends react_1.default.Component {
             "end:\n" +
             "hlt";
         const style = {
-            flexGrow: 1
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            alignItems: "stretch",
+            overflow: "auto"
         };
         const editorStyle = {
+            flexGrow: 3
+        };
+        const consoleStyle = {
+            flexGrow: 1,
+            position: "relative"
+        };
+        const fillStyle = {
             width: "100%",
             height: "100%"
         };
         return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: editorStyle, theme: "cobalt", showPrintMargin: false })));
+            react_1.default.createElement("div", { key: "editor", style: editorStyle },
+                react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true })),
+            react_1.default.createElement("div", { key: "console", style: consoleStyle },
+                react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
     }
     getAllTokens() {
         const rows = this._editor.current.editor.getSession().getLength();
@@ -921,8 +947,27 @@ class Editor extends react_1.default.Component {
         }
         return tokens;
     }
-    clear() {
+    clearEditor() {
         this._editor.current.editor.getSession().setValue("");
+    }
+    clearConsole() {
+        this._console.current.editor.getSession().setValue("");
+    }
+    appendWarning(row, column, message) {
+        let session = this._console.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, "warning(" + row + "," + column + "): " + message + "\n");
+        let annotations = session.getAnnotations();
+        annotations.push({ row: length - 1, column: 20, text: message, type: "warning" });
+        session.setAnnotations(annotations);
+    }
+    appendError(row, column, message) {
+        let session = this._console.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, "error(" + row + "," + column + "): " + message + "\n");
+        let annotations = session.getAnnotations();
+        annotations.push({ row: length - 1, column: 10, text: message, type: "error" });
+        session.setAnnotations(annotations);
     }
 }
 exports.default = Editor;
@@ -1056,6 +1101,7 @@ class Memory extends react_1.default.Component {
             gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
             gridTemplateRows: "repeat(auto-fill, minmax(30px, 1fr))",
             padding: "16px",
+            overflow: "auto"
         };
         const cellPairs = [];
         for (let i = 0; i < this.props.memory; i += 2)
@@ -23531,6 +23577,138 @@ var dom = require("../lib/dom");
 dom.importCssString(exports.cssText, exports.cssClass);
 });                (function() {
                     ace.require(["ace/theme/cobalt"], function(m) {
+                        if ( true && module) {
+                            module.exports = m;
+                        }
+                    });
+                })();
+            
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/module.js */ "./node_modules/webpack/buildin/module.js")(module)))
+
+/***/ }),
+
+/***/ "./node_modules/ace-builds/src-noconflict/theme-terminal.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/ace-builds/src-noconflict/theme-terminal.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(module) {ace.define("ace/theme/terminal",["require","exports","module","ace/lib/dom"], function(require, exports, module) {
+
+exports.isDark = true;
+exports.cssClass = "ace-terminal-theme";
+exports.cssText = ".ace-terminal-theme .ace_gutter {\
+background: #1a0005;\
+color: steelblue\
+}\
+.ace-terminal-theme .ace_print-margin {\
+width: 1px;\
+background: #1a1a1a\
+}\
+.ace-terminal-theme {\
+background-color: black;\
+color: #DEDEDE\
+}\
+.ace-terminal-theme .ace_cursor {\
+color: #9F9F9F\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_selection {\
+background: #424242\
+}\
+.ace-terminal-theme.ace_multiselect .ace_selection.ace_start {\
+box-shadow: 0 0 3px 0px black;\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_step {\
+background: rgb(0, 0, 0)\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_bracket {\
+background: #090;\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_bracket-start {\
+background: #090;\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_bracket-unmatched {\
+margin: -1px 0 0 -1px;\
+border: 1px solid #900\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_active-line {\
+background: #2A2A2A\
+}\
+.ace-terminal-theme .ace_gutter-active-line {\
+background-color: #2A112A\
+}\
+.ace-terminal-theme .ace_marker-layer .ace_selected-word {\
+border: 1px solid #424242\
+}\
+.ace-terminal-theme .ace_invisible {\
+color: #343434\
+}\
+.ace-terminal-theme .ace_keyword,\
+.ace-terminal-theme .ace_meta,\
+.ace-terminal-theme .ace_storage,\
+.ace-terminal-theme .ace_storage.ace_type,\
+.ace-terminal-theme .ace_support.ace_type {\
+color: tomato\
+}\
+.ace-terminal-theme .ace_keyword.ace_operator {\
+color: deeppink\
+}\
+.ace-terminal-theme .ace_constant.ace_character,\
+.ace-terminal-theme .ace_constant.ace_language,\
+.ace-terminal-theme .ace_constant.ace_numeric,\
+.ace-terminal-theme .ace_keyword.ace_other.ace_unit,\
+.ace-terminal-theme .ace_support.ace_constant,\
+.ace-terminal-theme .ace_variable.ace_parameter {\
+color: #E78C45\
+}\
+.ace-terminal-theme .ace_constant.ace_other {\
+color: gold\
+}\
+.ace-terminal-theme .ace_invalid {\
+color: yellow;\
+background-color: red\
+}\
+.ace-terminal-theme .ace_invalid.ace_deprecated {\
+color: #CED2CF;\
+background-color: #B798BF\
+}\
+.ace-terminal-theme .ace_fold {\
+background-color: #7AA6DA;\
+border-color: #DEDEDE\
+}\
+.ace-terminal-theme .ace_entity.ace_name.ace_function,\
+.ace-terminal-theme .ace_support.ace_function,\
+.ace-terminal-theme .ace_variable {\
+color: #7AA6DA\
+}\
+.ace-terminal-theme .ace_support.ace_class,\
+.ace-terminal-theme .ace_support.ace_type {\
+color: #E7C547\
+}\
+.ace-terminal-theme .ace_heading,\
+.ace-terminal-theme .ace_string {\
+color: #B9CA4A\
+}\
+.ace-terminal-theme .ace_entity.ace_name.ace_tag,\
+.ace-terminal-theme .ace_entity.ace_other.ace_attribute-name,\
+.ace-terminal-theme .ace_meta.ace_tag,\
+.ace-terminal-theme .ace_string.ace_regexp,\
+.ace-terminal-theme .ace_variable {\
+color: #D54E53\
+}\
+.ace-terminal-theme .ace_comment {\
+color: orangered\
+}\
+.ace-terminal-theme .ace_indent-guide {\
+background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAEklEQVQImWNgYGBgYLBWV/8PAAK4AYnhiq+xAAAAAElFTkSuQmCC) right repeat-y;\
+}\
+";
+
+var dom = require("../lib/dom");
+dom.importCssString(exports.cssText, exports.cssClass);
+});                (function() {
+                    ace.require(["ace/theme/terminal"], function(m) {
                         if ( true && module) {
                             module.exports = m;
                         }
@@ -65306,18 +65484,16 @@ class ToolBar extends react_1.default.Component {
         };
     }
     render() {
-        console.log("toolbar rendered");
         const style = {
-            position: "fixed",
             top: 0,
             width: "100%",
             display: "flex",
             flexWrap: "wrap",
-            overflow: "hidden",
             flexShrink: 0,
             backgroundColor: palette_1.default.toolBarBackground,
             color: palette_1.default.default,
-            alignItems: "stretch"
+            alignItems: "stretch",
+            zIndex: 10
         };
         let runButton;
         if (this.state.running) {
@@ -65331,9 +65507,9 @@ class ToolBar extends react_1.default.Component {
             react_1.default.createElement(toolButton_1.default, { key: "Reset Memory", icon: "memory", label: "Reset Memory", onClick: this.props.onResetMemory }),
             react_1.default.createElement(toolButton_1.default, { key: "Clear Editor", icon: "restore_page", label: "Clear Editor", onClick: this.props.onClearEditor }),
             react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
-            react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
             runButton,
             react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepTimeChange }),
+            react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
             react_1.default.createElement(infoBar_1.default, { ref: this._infoBar }),
             react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
                 react_1.default.createElement(toolButton_1.default, { key: "Source Code", icon: "code", label: "Source Code", onClick: () => { } }))));

@@ -1,15 +1,17 @@
 import React from "react";
-import Palette from "./palette";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
+import "ace-builds/src-noconflict/theme-terminal";
 import AssemblyBrookshearMode from "./assemblyBrookshearMode";
 import BrookshearAssemblerToken from "./brookshearAssemblerToken";
 
 class Editor extends React.Component<any, any> {
     private _editor = React.createRef<AceEditor>();
-
+    private _console = React.createRef<AceEditor>();
+    
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new AssemblyBrookshearMode());
+        this._console.current.editor.getSession().setOption("useWorker", false);
     }
 
     render() {
@@ -43,25 +45,58 @@ class Editor extends React.Component<any, any> {
             "\n" +
             "end:\n" +
             "hlt";
-
+        
         const style = {
-            flexGrow: 1
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            alignItems: "stretch",
+            overflow: "auto"
         } as React.CSSProperties;
         
         const editorStyle = {
+            flexGrow: 3
+        } as React.CSSProperties;
+
+        const consoleStyle = {
+            flexGrow: 1,
+            position: "relative"
+        } as React.CSSProperties;
+
+        const fillStyle = {
             width: "100%",
             height: "100%"
         } as React.CSSProperties;
-        
+
         return (
             <div style={style}>
-                <AceEditor
-                    defaultValue={fibonacciExample}
-                    ref={this._editor}
+                <div
+                    key="editor"
                     style={editorStyle}
-                    theme="cobalt"
-                    showPrintMargin={false}
-                />
+                >
+                    <AceEditor
+                        defaultValue={fibonacciExample}
+                        ref={this._editor}
+                        style={fillStyle}
+                        theme="cobalt"
+                        showPrintMargin={false}
+                        wrapEnabled={true}
+                    />
+                </div>
+                <div
+                    key="console"
+                    style={consoleStyle}
+                >
+                    <AceEditor
+                        ref={this._console}
+                        style={fillStyle}
+                        theme="terminal"
+                        showPrintMargin={false}
+                        readOnly={true}
+                        highlightActiveLine={false}
+                        wrapEnabled={true}
+                    />
+                </div>
             </div>
         );
     }
@@ -89,8 +124,30 @@ class Editor extends React.Component<any, any> {
         return tokens;
     }
 
-    clear() {
+    clearEditor() {
         this._editor.current.editor.getSession().setValue("");
+    }
+
+    clearConsole() {
+        this._console.current.editor.getSession().setValue("");
+    }
+
+    appendWarning(row, column, message) {
+        let session = this._console.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, "warning(" + row + "," + column + "): " + message + "\n");
+        let annotations = session.getAnnotations();
+        annotations.push({ row: length - 1, column: 20, text: message, type: "warning" });
+        session.setAnnotations(annotations);
+    }
+
+    appendError(row, column, message) {
+        let session = this._console.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, "error(" + row + "," + column + "): " + message + "\n");
+        let annotations = session.getAnnotations();
+        annotations.push({ row: length - 1, column: 10, text: message, type: "error" });
+        session.setAnnotations(annotations);
     }
 }
 

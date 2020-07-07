@@ -20,7 +20,9 @@ class CPU extends React.Component<any, any> {
             paddingTop: "16px",
             minWidth: "200px",
             display: "flex",
-            flexDirection: "column"
+            flexDirection: "column",
+            overflowX: "hidden",
+            overflowY: "auto"
         } as React.CSSProperties;
 
         const hrStyle = {

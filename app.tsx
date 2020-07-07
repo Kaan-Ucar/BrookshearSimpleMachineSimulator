@@ -6,7 +6,6 @@ import Memory from "./memory";
 import BrookshearMachine from "./brookshearMachine";
 import Editor from "./editor";
 import BrookshearAssembler from "./brookshearAssembler";
-import Palette from "./palette"
 
 export class App extends React.Component<any, any> {
     private _machine = new BrookshearMachine();
@@ -26,21 +25,30 @@ export class App extends React.Component<any, any> {
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
+
+        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
+        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
     }
 
     render() {
         const mainStyle = {
-            minHeight: "calc(100vh - 55px)",
+            height: "100vh",
             width: "100%",
-            marginTop: "55px",
             display: "flex",
+            flexDirection: "column"
+        } as React.CSSProperties;
+
+        const contentStyle = {
+            display: "flex",
+            flexGrow: 1,
             flexDirection: "row",
             alignContent: "stretch",
-            alighItems: "stretch"
+            alighItems: "stretch",
+            overflowY: "auto"
         } as React.CSSProperties;
 
         return (
-            <React.Fragment>
+            <div style={mainStyle}>
                 <ToolBar ref={this._toolBar}
                     onResetCPU={() => this._machine.resetCPU()}
                     onResetMemory={() => this._machine.resetMemory()}
@@ -49,9 +57,9 @@ export class App extends React.Component<any, any> {
                     onStepOver={() => this._machine.stepOver()}
                     onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
                     onBuild={() => this.handleBuild()}
-                    onClearEditor={() => this._editor.current.clear()}
+                    onClearEditor={() => this._editor.current.clearEditor()}
                 />
-                <div style={mainStyle}>
+                <div style={contentStyle}>
                     <CPU ref={this._cpu}
                         registers={16}
                         onProgramCounterChange={(value) => this._machine.setProgramCounter(value)}
@@ -63,7 +71,7 @@ export class App extends React.Component<any, any> {
                     />
                     <Editor ref={this._editor} />
                 </div>
-            </React.Fragment>
+            </div>
         );
     }
 
@@ -74,6 +82,7 @@ export class App extends React.Component<any, any> {
 
     private handleBuild() {
         this._assembler.clear();
+        this._editor.current.clearConsole();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
             return;

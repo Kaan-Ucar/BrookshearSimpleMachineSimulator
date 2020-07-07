@@ -16,18 +16,16 @@ class ToolBar extends React.Component<any, any> {
     }
 
     render() {
-        console.log("toolbar rendered");
         const style = {
-            position: "fixed",
             top: 0,
             width: "100%",
             display: "flex",
             flexWrap: "wrap",
-            overflow: "hidden",
             flexShrink: 0,
             backgroundColor: Palette.toolBarBackground,
             color: Palette.default,
-            alignItems: "stretch"
+            alignItems: "stretch",
+            zIndex: 10
         } as React.CSSProperties;
 
         let runButton;
@@ -78,18 +76,18 @@ class ToolBar extends React.Component<any, any> {
                     label="Build"
                     onClick={this.props.onBuild}
                 />
-                <ToolButton
-                    key="Step Over"
-                    icon="redo"
-                    label="Step Over"
-                    onClick={this.props.onStepOver}
-                />
                 {runButton}
                 <Slider label="Speed"
                     min={4000}
                     max={0}
                     defaultValue={2000}
                     onChange={this.props.onStepTimeChange}
+                />
+                <ToolButton
+                    key="Step Over"
+                    icon="redo"
+                    label="Step Over"
+                    onClick={this.props.onStepOver}
                 />
                 <InfoBar ref={this._infoBar}/>
                 <a style={{ textDecoration: "none" }}
