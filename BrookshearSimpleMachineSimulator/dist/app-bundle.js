@@ -157,11 +157,13 @@ class App extends react_1.default.Component {
         this._editor.current.clearConsole();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
+            this._editor.current.appendMessage("Build failed.");
             return;
         }
         this._machine.stop();
         this._machine.setMemory(this._assembler.getMachineCode());
         this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
+        this._editor.current.appendMessage("Build successful.");
     }
 }
 exports.App = App;
@@ -861,16 +863,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
 const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
 __webpack_require__(/*! ace-builds/src-noconflict/theme-cobalt */ "./node_modules/ace-builds/src-noconflict/theme-cobalt.js");
 __webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
 const assemblyBrookshearMode_1 = __importDefault(__webpack_require__(/*! ./assemblyBrookshearMode */ "./assemblyBrookshearMode.js"));
 const brookshearAssemblerToken_1 = __importDefault(__webpack_require__(/*! ./brookshearAssemblerToken */ "./brookshearAssemblerToken.ts"));
+const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class Editor extends react_1.default.Component {
-    constructor() {
-        super(...arguments);
+    constructor(props) {
+        super(props);
         this._editor = react_1.default.createRef();
         this._console = react_1.default.createRef();
+        this.state = { consoleVisible: false };
     }
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
@@ -914,19 +919,39 @@ class Editor extends react_1.default.Component {
             overflow: "auto"
         };
         const editorStyle = {
-            flexGrow: 3
+            flexGrow: 4,
+            position: "relative"
         };
         const consoleStyle = {
-            flexGrow: 1,
-            position: "relative"
+            flexGrow: this.state.consoleVisible ? 1 : 0,
+            transition: "flex-grow 0.3s"
         };
         const fillStyle = {
             width: "100%",
             height: "100%"
         };
+        const consoleButtonStyle = {
+            position: "absolute",
+            bottom: 0,
+            right: "20px",
+            color: palette_1.default.default,
+            background: "black",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            borderTopLeftRadius: "25%",
+            borderTopRightRadius: "25%",
+            ":hover": {
+                color: palette_1.default.focus,
+                background: palette_1.default.toolBarHighlightBackground
+            }
+        };
+        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
             react_1.default.createElement("div", { key: "editor", style: editorStyle },
-                react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true })),
+                react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true }),
+                react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
+                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon))),
             react_1.default.createElement("div", { key: "console", style: consoleStyle },
                 react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
     }
@@ -947,6 +972,10 @@ class Editor extends react_1.default.Component {
         }
         return tokens;
     }
+    toggleConsoleVisibility() {
+        this.setState({ consoleVisible: !this.state.consoleVisible });
+        setTimeout(() => this._console.current.editor.resize(), 300);
+    }
     clearEditor() {
         this._editor.current.editor.getSession().setValue("");
     }
@@ -954,23 +983,23 @@ class Editor extends react_1.default.Component {
         this._console.current.editor.getSession().setValue("");
     }
     appendWarning(row, column, message) {
-        let session = this._console.current.editor.getSession();
-        const length = session.getLength();
-        session.insert({ row: length, column: 0 }, "warning(" + row + "," + column + "): " + message + "\n");
-        let annotations = session.getAnnotations();
-        annotations.push({ row: length - 1, column: 20, text: message, type: "warning" });
-        session.setAnnotations(annotations);
+        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
     }
     appendError(row, column, message) {
+        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    }
+    appendMessage(message, annotation = "") {
         let session = this._console.current.editor.getSession();
         const length = session.getLength();
-        session.insert({ row: length, column: 0 }, "error(" + row + "," + column + "): " + message + "\n");
-        let annotations = session.getAnnotations();
-        annotations.push({ row: length - 1, column: 10, text: message, type: "error" });
-        session.setAnnotations(annotations);
+        session.insert({ row: length, column: 0 }, message + "\n");
+        if (annotation !== "") {
+            let annotations = session.getAnnotations();
+            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
+            session.setAnnotations(annotations);
+        }
     }
 }
-exports.default = Editor;
+exports.default = radium_1.default(Editor);
 
 
 /***/ }),
