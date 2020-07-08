@@ -161,7 +161,10 @@ class Editor extends React.Component<any, any> {
 
     toggleConsoleVisibility() {
         this.setState({ consoleVisible: !this.state.consoleVisible });
-        setTimeout(() => this._console.current.editor.resize(), 300);
+        setTimeout(() => {
+            this._console.current.editor.resize();
+            this._editor.current.editor.resize();
+        }, 300);
     }
 
     clearEditor() {

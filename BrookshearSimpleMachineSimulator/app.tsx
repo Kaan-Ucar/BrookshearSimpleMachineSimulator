@@ -90,9 +90,10 @@ export class App extends React.Component<any, any> {
         }
 
         this._machine.stop();
-        this._machine.setMemory(this._assembler.getMachineCode());
+        const machineCode = this._assembler.getMachineCode();
+        this._machine.setMemory(machineCode);
         this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
-        this._editor.current.appendMessage("Build successful.");
+        this._editor.current.appendMessage("Build successful: " + machineCode.length + "B.");
     }
 }
 
