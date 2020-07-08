@@ -161,9 +161,10 @@ class App extends react_1.default.Component {
             return;
         }
         this._machine.stop();
-        this._machine.setMemory(this._assembler.getMachineCode());
+        const machineCode = this._assembler.getMachineCode();
+        this._machine.setMemory(machineCode);
         this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
-        this._editor.current.appendMessage("Build successful.");
+        this._editor.current.appendMessage("Build successful: " + machineCode.length + "B.");
     }
 }
 exports.App = App;
@@ -295,6 +296,10 @@ class BrookshearAssembler {
                 const firstToken = lines[i][0];
                 if (firstToken.getType(1) === "instruction") {
                     codeSize += 2;
+                    if (codeSize > 256) {
+                        this.error(i, firstToken.start, "Program size exceeds memory size.");
+                        return false;
+                    }
                 }
                 else if (firstToken.getType(1) === "label") {
                     if (firstToken.value[firstToken.value.length - 1] === ':')
@@ -309,6 +314,10 @@ class BrookshearAssembler {
                         const secondToken = lines[i][1];
                         if (secondToken.getType(1) === "instruction") {
                             codeSize += 2;
+                            if (codeSize > 256) {
+                                this.error(i, secondToken.start, "Program size exceeds memory size.");
+                                return false;
+                            }
                         }
                         else {
                             this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
@@ -974,7 +983,10 @@ class Editor extends react_1.default.Component {
     }
     toggleConsoleVisibility() {
         this.setState({ consoleVisible: !this.state.consoleVisible });
-        setTimeout(() => this._console.current.editor.resize(), 300);
+        setTimeout(() => {
+            this._console.current.editor.resize();
+            this._editor.current.editor.resize();
+        }, 300);
     }
     clearEditor() {
         this._editor.current.editor.getSession().setValue("");

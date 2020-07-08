@@ -52,6 +52,11 @@ class BrookshearAssembler {
 
                 if (firstToken.getType(1) === "instruction") {
                     codeSize += 2;
+
+                    if (codeSize > 256) {
+                        this.error(i, firstToken.start, "Program size exceeds memory size.");
+                        return false;
+                    }
                 }
                 else if (firstToken.getType(1) === "label") {
                     if (firstToken.value[firstToken.value.length - 1] === ':')
@@ -69,6 +74,11 @@ class BrookshearAssembler {
 
                         if (secondToken.getType(1) === "instruction") {
                             codeSize += 2;
+
+                            if (codeSize > 256) {
+                                this.error(i, secondToken.start, "Program size exceeds memory size.");
+                                return false;
+                            }
                         }
                         else {
                             this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
