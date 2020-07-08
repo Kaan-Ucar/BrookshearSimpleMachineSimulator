@@ -93,8 +93,7 @@ class Editor extends React.Component<any, any> {
             borderTopRightRadius: "25%",
 
             ":hover": {
-                color: Palette.focus,
-                background: Palette.toolBarHighlightBackground
+                color: Palette.focus
             }
         } as React.CSSProperties;
 
