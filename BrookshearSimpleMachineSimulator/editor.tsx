@@ -14,7 +14,10 @@ class Editor extends React.Component<any, any> {
     constructor(props) {
         super(props);
 
-        this.state = { consoleVisible: false };
+        this.state = {
+            consoleVisible: false,
+            notifications: 0,
+        };
     }
 
     componentDidMount() {
@@ -95,6 +98,20 @@ class Editor extends React.Component<any, any> {
             }
         } as React.CSSProperties;
 
+        const notificationStyle = {
+            position: "absolute",
+            background: Palette.focus,
+            color: Palette.default,
+            borderRadius: "50%",
+            left: "-25%",
+            top: "-25%",
+            width: "50%",
+            height: "50%",
+            fontSize: "small",
+            fontFamily: "arial",
+            visibility: this.state.notifications > 0 ? "visible": "hidden"
+        } as React.CSSProperties;
+
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
 
         return (
@@ -116,6 +133,7 @@ class Editor extends React.Component<any, any> {
                         onClick={() => this.toggleConsoleVisibility()}
                     >
                         <i className="material-icons">{consoleButtonIcon}</i>
+                        <div style={notificationStyle}>{this.state.notifications}</div>
                     </button>
                 </div>
                 <div
@@ -160,7 +178,12 @@ class Editor extends React.Component<any, any> {
     }
 
     toggleConsoleVisibility() {
-        this.setState({ consoleVisible: !this.state.consoleVisible });
+        this.setState({
+            consoleVisible: !this.state.consoleVisible,
+            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
+        });
+        
+        // resize on callback doesn't fix, resizing issue
         setTimeout(() => {
             this._console.current.editor.resize();
             this._editor.current.editor.resize();
@@ -193,6 +216,9 @@ class Editor extends React.Component<any, any> {
             annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
             session.setAnnotations(annotations);
         }
+
+        if (!this.state.consoleVisible)
+            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
     }
 }
 

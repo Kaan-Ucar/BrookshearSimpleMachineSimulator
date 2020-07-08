@@ -884,7 +884,10 @@ class Editor extends react_1.default.Component {
         super(props);
         this._editor = react_1.default.createRef();
         this._console = react_1.default.createRef();
-        this.state = { consoleVisible: false };
+        this.state = {
+            consoleVisible: false,
+            notifications: 0,
+        };
     }
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
@@ -955,12 +958,26 @@ class Editor extends react_1.default.Component {
                 background: palette_1.default.toolBarHighlightBackground
             }
         };
+        const notificationStyle = {
+            position: "absolute",
+            background: palette_1.default.focus,
+            color: palette_1.default.default,
+            borderRadius: "50%",
+            left: "-25%",
+            top: "-25%",
+            width: "50%",
+            height: "50%",
+            fontSize: "small",
+            fontFamily: "arial",
+            visibility: this.state.notifications > 0 ? "visible" : "hidden"
+        };
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
             react_1.default.createElement("div", { key: "editor", style: editorStyle },
                 react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true }),
                 react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
-                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon))),
+                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
+                    react_1.default.createElement("div", { style: notificationStyle }, this.state.notifications))),
             react_1.default.createElement("div", { key: "console", style: consoleStyle },
                 react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
     }
@@ -982,7 +999,11 @@ class Editor extends react_1.default.Component {
         return tokens;
     }
     toggleConsoleVisibility() {
-        this.setState({ consoleVisible: !this.state.consoleVisible });
+        this.setState({
+            consoleVisible: !this.state.consoleVisible,
+            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
+        });
+        // resize on callback doesn't fix, resizing issue
         setTimeout(() => {
             this._console.current.editor.resize();
             this._editor.current.editor.resize();
@@ -1009,6 +1030,8 @@ class Editor extends react_1.default.Component {
             annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
             session.setAnnotations(annotations);
         }
+        if (!this.state.consoleVisible)
+            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
     }
 }
 exports.default = radium_1.default(Editor);
