@@ -107,7 +107,6 @@ class Editor extends React.Component<any, any> {
             top: "-8px",
             width: "16px",
             height: "16px",
-            
             visibility: this.state.notifications > 0 ? "visible": "hidden"
         } as React.CSSProperties;
 
@@ -115,7 +114,8 @@ class Editor extends React.Component<any, any> {
             display: "inline-block",
             verticalAlign: "middle",
             fontSize: "small",
-            fontFamily: "arial"
+            fontFamily: "arial",
+            textAlign: "center"
         } as React.CSSProperties;
 
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
@@ -204,6 +204,7 @@ class Editor extends React.Component<any, any> {
 
     clearConsole() {
         this._console.current.editor.getSession().setValue("");
+        this.setState(() => ({ notifications: 0 }));
     }
 
     appendWarning(row, column, message) {
