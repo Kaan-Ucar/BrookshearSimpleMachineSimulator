@@ -98,18 +98,24 @@ class Editor extends React.Component<any, any> {
             }
         } as React.CSSProperties;
 
-        const notificationStyle = {
+        const notificationsBubbleStyle = {
             position: "absolute",
             background: Palette.focus,
             color: Palette.default,
             borderRadius: "50%",
-            left: "-25%",
-            top: "-25%",
-            width: "50%",
-            height: "50%",
-            fontSize: "small",
-            fontFamily: "arial",
+            left: "-8px",
+            top: "-8px",
+            width: "16px",
+            height: "16px",
+            
             visibility: this.state.notifications > 0 ? "visible": "hidden"
+        } as React.CSSProperties;
+
+        const notificationsTextStyle = {
+            display: "inline-block",
+            verticalAlign: "middle",
+            fontSize: "small",
+            fontFamily: "arial"
         } as React.CSSProperties;
 
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
@@ -133,7 +139,9 @@ class Editor extends React.Component<any, any> {
                         onClick={() => this.toggleConsoleVisibility()}
                     >
                         <i className="material-icons">{consoleButtonIcon}</i>
-                        <div style={notificationStyle}>{this.state.notifications}</div>
+                        <div style={notificationsBubbleStyle}>
+                            <span style={notificationsTextStyle}>{ this.state.notifications }</span>
+                        </div>
                     </button>
                 </div>
                 <div
