@@ -170,7 +170,7 @@
                 break;
 
             case 11: // Jump to instruction in memory cell BC if the content of register A equals the content of register 0.
-                message = "Jump to instruction in memory cell " + strBC + " if the content of register A equals the content of register 0."
+                message = "Jump to instruction in memory cell " + strBC + " if the content of register " + strA + " equals the content of register 0."
                 instruction = () => {
                     if (this._registers[operandA] === this._registers[0])
                         this._programCounter = operandBC - 2;

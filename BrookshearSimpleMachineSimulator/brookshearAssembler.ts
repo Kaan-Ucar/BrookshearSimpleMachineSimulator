@@ -54,7 +54,7 @@ class BrookshearAssembler {
                     codeSize += 2;
 
                     if (codeSize > 256) {
-                        this.error(i, firstToken.start, "Program size exceeds memory size.");
+                        this.error(i, firstToken.start, "Program size exceeds memory size");
                         return false;
                     }
                 }
@@ -76,7 +76,7 @@ class BrookshearAssembler {
                             codeSize += 2;
 
                             if (codeSize > 256) {
-                                this.error(i, secondToken.start, "Program size exceeds memory size.");
+                                this.error(i, secondToken.start, "Program size exceeds memory size");
                                 return false;
                             }
                         }

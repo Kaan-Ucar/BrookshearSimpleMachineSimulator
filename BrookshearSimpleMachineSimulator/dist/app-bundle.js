@@ -163,8 +163,8 @@ class App extends react_1.default.Component {
         this._machine.stop();
         const machineCode = this._assembler.getMachineCode();
         this._machine.setMemory(machineCode);
-        this._toolBar.current.setSuccess("BUILD SUCCESSFUL", true);
-        this._editor.current.appendMessage("Build successful: " + machineCode.length + "B.");
+        this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
+        this._editor.current.appendMessage("Build succeded: " + machineCode.length + "B.");
     }
 }
 exports.App = App;
@@ -297,7 +297,7 @@ class BrookshearAssembler {
                 if (firstToken.getType(1) === "instruction") {
                     codeSize += 2;
                     if (codeSize > 256) {
-                        this.error(i, firstToken.start, "Program size exceeds memory size.");
+                        this.error(i, firstToken.start, "Program size exceeds memory size");
                         return false;
                     }
                 }
@@ -315,7 +315,7 @@ class BrookshearAssembler {
                         if (secondToken.getType(1) === "instruction") {
                             codeSize += 2;
                             if (codeSize > 256) {
-                                this.error(i, secondToken.start, "Program size exceeds memory size.");
+                                this.error(i, secondToken.start, "Program size exceeds memory size");
                                 return false;
                             }
                         }
@@ -650,7 +650,7 @@ class BrookshearMachine {
                 instruction = () => { this.setRegister(operandA, (this._registers[operandA] >>> this._registers[operandC]) | (this._registers[operandA] << (8 - this._registers[operandC]))); };
                 break;
             case 11: // Jump to instruction in memory cell BC if the content of register A equals the content of register 0.
-                message = "Jump to instruction in memory cell " + strBC + " if the content of register A equals the content of register 0.";
+                message = "Jump to instruction in memory cell " + strBC + " if the content of register " + strA + " equals the content of register 0.";
                 instruction = () => {
                     if (this._registers[operandA] === this._registers[0])
                         this._programCounter = operandBC - 2;
@@ -954,8 +954,7 @@ class Editor extends react_1.default.Component {
             borderTopLeftRadius: "25%",
             borderTopRightRadius: "25%",
             ":hover": {
-                color: palette_1.default.focus,
-                background: palette_1.default.toolBarHighlightBackground
+                color: palette_1.default.focus
             }
         };
         const notificationsBubbleStyle = {
