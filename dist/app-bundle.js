@@ -958,18 +958,22 @@ class Editor extends react_1.default.Component {
                 background: palette_1.default.toolBarHighlightBackground
             }
         };
-        const notificationStyle = {
+        const notificationsBubbleStyle = {
             position: "absolute",
             background: palette_1.default.focus,
             color: palette_1.default.default,
             borderRadius: "50%",
-            left: "-25%",
-            top: "-25%",
-            width: "50%",
-            height: "50%",
-            fontSize: "small",
-            fontFamily: "arial",
+            left: "-8px",
+            top: "-8px",
+            width: "16px",
+            height: "16px",
             visibility: this.state.notifications > 0 ? "visible" : "hidden"
+        };
+        const notificationsTextStyle = {
+            display: "inline-block",
+            verticalAlign: "middle",
+            fontSize: "small",
+            fontFamily: "arial"
         };
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
@@ -977,7 +981,8 @@ class Editor extends react_1.default.Component {
                 react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true }),
                 react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
                     react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
-                    react_1.default.createElement("div", { style: notificationStyle }, this.state.notifications))),
+                    react_1.default.createElement("div", { style: notificationsBubbleStyle },
+                        react_1.default.createElement("span", { style: notificationsTextStyle }, this.state.notifications)))),
             react_1.default.createElement("div", { key: "console", style: consoleStyle },
                 react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
     }
