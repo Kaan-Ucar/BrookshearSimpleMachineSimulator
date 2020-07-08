@@ -973,7 +973,8 @@ class Editor extends react_1.default.Component {
             display: "inline-block",
             verticalAlign: "middle",
             fontSize: "small",
-            fontFamily: "arial"
+            fontFamily: "arial",
+            textAlign: "center"
         };
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
@@ -1019,6 +1020,7 @@ class Editor extends react_1.default.Component {
     }
     clearConsole() {
         this._console.current.editor.getSession().setValue("");
+        this.setState(() => ({ notifications: 0 }));
     }
     appendWarning(row, column, message) {
         this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
