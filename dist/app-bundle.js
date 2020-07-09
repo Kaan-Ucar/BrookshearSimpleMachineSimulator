@@ -116,8 +116,9 @@ class App extends react_1.default.Component {
         this._memory = react_1.default.createRef();
         this._editor = react_1.default.createRef();
         this._toolBar = react_1.default.createRef();
-        this._machine.onStop = () => this._toolBar.current.setRunning(false);
-        this._machine.onProgramCounterChange = (pc) => this._cpu.current.setProgramCounter(pc);
+        this._rowMap = new Map();
+        this._machine.onPause = () => this._toolBar.current.setRunning(false);
+        this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
         this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
@@ -142,7 +143,7 @@ class App extends react_1.default.Component {
             overflowY: "auto"
         };
         return (react_1.default.createElement("div", { style: mainStyle },
-            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.stop(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
+            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this.handleResetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
             react_1.default.createElement("div", { style: contentStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
@@ -155,6 +156,8 @@ class App extends react_1.default.Component {
     handleBuild() {
         this._assembler.clear();
         this._editor.current.clearConsole();
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
             this._editor.current.appendMessage("Build failed.");
@@ -163,8 +166,21 @@ class App extends react_1.default.Component {
         this._machine.stop();
         const machineCode = this._assembler.getMachineCode();
         this._machine.setMemory(machineCode);
+        this._rowMap = this._assembler.getRowMap();
+        this.handleProgramCounterChange(this._machine.getProgramCounter());
         this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
         this._editor.current.appendMessage("Build succeded: " + machineCode.length + "B.");
+    }
+    handleProgramCounterChange(programCounter) {
+        this._cpu.current.setProgramCounter(programCounter);
+        if (this._rowMap.has(programCounter))
+            this._editor.current.setArrowPosition(this._rowMap.get(programCounter));
+        else
+            this._editor.current.disappearArrow();
+    }
+    handleResetMemory() {
+        this._machine.resetMemory();
+        this._rowMap.clear();
     }
 }
 exports.App = App;
@@ -260,9 +276,10 @@ class BrookshearAssembler {
     constructor() {
         this.onWarning = (row, column, message) => { console.log("warning(" + row + "," + column + "): " + message); };
         this.onError = (row, column, message) => { console.log("error(" + row + "," + column + "): " + message); };
-        this._labels = {};
+        this._labels = new Map();
         this._machineCode = new Uint8Array();
         this._machineCodeIndex = 0;
+        this._rowMap = new Map();
     }
     warning(row, column, message) {
         this.onWarning(row, column, message);
@@ -272,6 +289,9 @@ class BrookshearAssembler {
     }
     getMachineCode() {
         return new Uint8Array(this._machineCode);
+    }
+    getRowMap() {
+        return new Map(this._rowMap);
     }
     assemblyLines(lines) {
         let filteredLines = [];
@@ -289,42 +309,47 @@ class BrookshearAssembler {
             this.warning(lines.length, 0, "No halt instruction at end of program");
         return true;
     }
+    increaseCodeSize(codeSize, row, column) {
+        this._rowMap.set(codeSize, row);
+        codeSize += 2;
+        if (codeSize > 256) {
+            this.error(row, column, "Program size exceeds memory size");
+            return -1;
+        }
+        return codeSize;
+    }
     controlLines(lines) {
         let codeSize = 0;
         for (let i = 0; i < lines.length; ++i)
             if (lines[i].length > 0) {
                 const firstToken = lines[i][0];
                 if (firstToken.getType(1) === "instruction") {
-                    codeSize += 2;
-                    if (codeSize > 256) {
-                        this.error(i, firstToken.start, "Program size exceeds memory size");
+                    codeSize = this.increaseCodeSize(codeSize, i, firstToken.start);
+                    if (codeSize < 0)
                         return false;
-                    }
                 }
                 else if (firstToken.getType(1) === "label") {
                     if (firstToken.value[firstToken.value.length - 1] === ':')
                         firstToken.value = firstToken.value.slice(0, -1);
                     else if (lines[i].length === 1)
                         this.warning(i + 1, firstToken.start + firstToken.value.length, "label alone on a line without a colon might be in error");
-                    if (this._labels[firstToken.value] !== undefined) {
+                    if (this._labels.has(firstToken.value)) {
                         this.error(i + 1, firstToken.start, "label '" + firstToken.value + "' redefined");
                         return false;
                     }
                     if (lines[i].length > 1) {
                         const secondToken = lines[i][1];
                         if (secondToken.getType(1) === "instruction") {
-                            codeSize += 2;
-                            if (codeSize > 256) {
-                                this.error(i, secondToken.start, "Program size exceeds memory size");
+                            codeSize = this.increaseCodeSize(codeSize, i, secondToken.start);
+                            if (codeSize < 0)
                                 return false;
-                            }
                         }
                         else {
                             this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
                             return false;
                         }
                     }
-                    this._labels[firstToken.value] = codeSize;
+                    this._labels.set(firstToken.value, codeSize);
                 }
                 else {
                     this.error(i + 1, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
@@ -336,7 +361,8 @@ class BrookshearAssembler {
         return true;
     }
     clear() {
-        this._labels = {};
+        this._labels.clear();
+        this._rowMap.clear();
         this._machineCode = new Uint8Array();
         this._machineCodeIndex = 0;
     }
@@ -454,13 +480,12 @@ class BrookshearAssembler {
     evaluateUnknowns(row, tokens) {
         for (let token of tokens) {
             if (token.getType(1) === "") {
-                const value = this._labels[token.value];
-                if (value === undefined) {
+                if (!this._labels.has(token.value)) {
                     this.error(row, token.start, "symbol '" + token.value + "' undefined");
                     return false;
                 }
                 token.setTypes(["constant", "operand", "decimal"]);
-                token.value = value;
+                token.value = this._labels.get(token.value).toString();
             }
         }
         return true;
@@ -514,7 +539,7 @@ exports.default = BrookshearAssemblerToken;
 Object.defineProperty(exports, "__esModule", { value: true });
 class BrookshearMachine {
     constructor() {
-        this.onStop = () => { };
+        this.onPause = () => { };
         this.onProgramCounterChange = (pc) => { };
         this.onRegisterChange = (register, value) => { };
         this.onMemoryChange = (address, value) => { };
@@ -527,6 +552,9 @@ class BrookshearMachine {
         this._running = false;
         this._stepTime = 2000;
         this._progress = 0;
+    }
+    getProgramCounter() {
+        return this._programCounter;
     }
     resetCPU() {
         this.setProgramCounter(0);
@@ -576,9 +604,13 @@ class BrookshearMachine {
             await this.runStep(true);
         } while (this._running);
     }
-    stop() {
+    pause() {
         this._running = false;
-        this.onStop();
+        this.onPause();
+    }
+    stop() {
+        this.pause();
+        this.setProgress(0);
     }
     async waitProgress() {
         const RESOLUTION = 1000 / 60; // 60fps
@@ -658,11 +690,11 @@ class BrookshearMachine {
                 break;
             case 12: // Halt execution.
                 this.onInfo("Halt execution.");
-                this.stop();
+                this.pause();
                 return;
             default: // Opcode not found. Halted.
                 this.onError("Opcode not found. Halted.");
-                this.stop();
+                this.pause();
                 return;
         }
         this.onInfo(message);
@@ -898,8 +930,8 @@ class Editor extends react_1.default.Component {
             "; enter n in register 1\n" +
             "; sum will be in register F\n" +
             "; n = 0x1\n" +
-            "ldrc 0xD, 0; prev\n" +
-            "ldrc 0xE, 1; now\n" +
+            "ldrc 0xD, 0; previous\n" +
+            "ldrc 0xE, 1; current\n" +
             "ldrc 0xF, 1; sum\n" +
             "ldrc 0xB, 1; i\n" +
             "\n" +
@@ -914,9 +946,9 @@ class Editor extends react_1.default.Component {
             "for_control:\n" +
             "mov 0x1, 0x0\n" +
             "jmp 0xB, end; if (i == n) return\n" +
-            "add 0xF, 0xD, 0xE; sum = prev + now\n" +
-            "mov 0xE, 0xD; prev = now\n" +
-            "mov 0xF, 0xE; now = sum\n" +
+            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
+            "mov 0xE, 0xD; previous = current\n" +
+            "mov 0xF, 0xE; current = sum\n" +
             "ldrc 0x0, 1\n" +
             "add 0xB, 0xB, 0x0; i = i + 1\n" +
             "jmp 0x0, for_control\n" +
@@ -978,6 +1010,11 @@ class Editor extends react_1.default.Component {
         const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
             react_1.default.createElement("div", { key: "editor", style: editorStyle },
+                react_1.default.createElement(radium_1.default.Style, { scopeSelector: ".ace_gutter-cell.arrow", rules: {
+                        background: palette_1.default.focus,
+                        color: palette_1.default.default,
+                        clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
+                    } }),
                 react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true }),
                 react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
                     react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
@@ -1038,6 +1075,13 @@ class Editor extends react_1.default.Component {
         }
         if (!this.state.consoleVisible)
             this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    }
+    setArrowPosition(row) {
+        this.disappearArrow();
+        this._editor.current.editor.getSession().setBreakpoint(row, "arrow");
+    }
+    disappearArrow() {
+        this._editor.current.editor.getSession().clearBreakpoints();
     }
 }
 exports.default = radium_1.default(Editor);

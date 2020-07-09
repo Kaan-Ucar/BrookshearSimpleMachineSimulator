@@ -1,5 +1,5 @@
 ﻿class BrookshearMachine {
-    public onStop = () => { };
+    public onPause = () => { };
     public onProgramCounterChange = (pc: number) => { };
     public onRegisterChange = (register: number, value: number) => { };
     public onMemoryChange = (address: number, value: number) => { };
@@ -13,6 +13,10 @@
     private _running = false;
     private _stepTime = 2000;
     private _progress = 0;
+
+    getProgramCounter() {
+        return this._programCounter;
+    }
 
     resetCPU() {
         this.setProgramCounter(0);
@@ -79,9 +83,14 @@
         } while (this._running);
     }
 
-    stop() {
+    pause() {
         this._running = false;
-        this.onStop();
+        this.onPause();
+    }
+
+    stop() {
+        this.pause();
+        this.setProgress(0);
     }
 
     private async waitProgress() {
@@ -179,12 +188,12 @@
 
             case 12: // Halt execution.
                 this.onInfo("Halt execution.");
-                this.stop();
+                this.pause();
                 return;
 
             default: // Opcode not found. Halted.
                 this.onError("Opcode not found. Halted.");
-                this.stop();
+                this.pause();
                 return;
         }
 

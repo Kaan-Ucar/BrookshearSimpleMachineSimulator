@@ -31,8 +31,8 @@ class Editor extends React.Component<any, any> {
             "; enter n in register 1\n" +
             "; sum will be in register F\n" +
             "; n = 0x1\n" +
-            "ldrc 0xD, 0; prev\n" +
-            "ldrc 0xE, 1; now\n" +
+            "ldrc 0xD, 0; previous\n" +
+            "ldrc 0xE, 1; current\n" +
             "ldrc 0xF, 1; sum\n" +
             "ldrc 0xB, 1; i\n" +
             "\n" +
@@ -47,9 +47,9 @@ class Editor extends React.Component<any, any> {
             "for_control:\n" +
             "mov 0x1, 0x0\n" +
             "jmp 0xB, end; if (i == n) return\n" +
-            "add 0xF, 0xD, 0xE; sum = prev + now\n" +
-            "mov 0xE, 0xD; prev = now\n" +
-            "mov 0xF, 0xE; now = sum\n" +
+            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
+            "mov 0xE, 0xD; previous = current\n" +
+            "mov 0xF, 0xE; current = sum\n" +
             "ldrc 0x0, 1\n" +
             "add 0xB, 0xB, 0x0; i = i + 1\n" +
             "jmp 0x0, for_control\n" +
@@ -125,6 +125,14 @@ class Editor extends React.Component<any, any> {
                     key="editor"
                     style={editorStyle}
                 >
+                    <Radium.Style
+                        scopeSelector=".ace_gutter-cell.arrow"
+                        rules={{
+                            background: Palette.focus,
+                            color: Palette.default,
+                            clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
+                        }}
+                    />
                     <AceEditor
                         defaultValue={fibonacciExample}
                         ref={this._editor}
@@ -227,6 +235,15 @@ class Editor extends React.Component<any, any> {
 
         if (!this.state.consoleVisible)
             this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    }
+
+    setArrowPosition(row: number) {
+        this.disappearArrow();
+        this._editor.current.editor.getSession().setBreakpoint(row, "arrow");
+    }
+
+    disappearArrow() {
+        this._editor.current.editor.getSession().clearBreakpoints();
     }
 }
 

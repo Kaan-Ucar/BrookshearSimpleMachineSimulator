@@ -4,9 +4,10 @@ class BrookshearAssembler {
     public onWarning = (row: number, column: number, message: string) => { console.log("warning(" + row + "," + column + "): " + message); }
     public onError = (row: number, column: number, message: string) => { console.log("error(" + row + "," + column + "): " + message); }
 
-    private _labels = {};
+    private _labels = new Map<string, number>();
     private _machineCode = new Uint8Array();
     private _machineCodeIndex = 0;
+    private _rowMap = new Map<number, number>();
 
     private warning(row: number, column: number, message: string) {
         this.onWarning(row, column, message);
@@ -18,6 +19,10 @@ class BrookshearAssembler {
 
     getMachineCode() {
         return new Uint8Array(this._machineCode);
+    }
+
+    getRowMap() {
+        return new Map(this._rowMap);
     }
 
     assemblyLines(lines: BrookshearAssemblerToken[][]) {
@@ -43,6 +48,18 @@ class BrookshearAssembler {
         return true;
     }
 
+    private increaseCodeSize(codeSize, row, column) {
+        this._rowMap.set(codeSize, row);
+        codeSize += 2;
+
+        if (codeSize > 256) {
+            this.error(row, column, "Program size exceeds memory size");
+            return -1;
+        }
+
+        return codeSize;
+    }
+
     private controlLines(lines: BrookshearAssemblerToken[][]) {
         let codeSize = 0;
 
@@ -51,12 +68,10 @@ class BrookshearAssembler {
                 const firstToken = lines[i][0];
 
                 if (firstToken.getType(1) === "instruction") {
-                    codeSize += 2;
+                    codeSize = this.increaseCodeSize(codeSize, i, firstToken.start);
 
-                    if (codeSize > 256) {
-                        this.error(i, firstToken.start, "Program size exceeds memory size");
+                    if (codeSize < 0)
                         return false;
-                    }
                 }
                 else if (firstToken.getType(1) === "label") {
                     if (firstToken.value[firstToken.value.length - 1] === ':')
@@ -64,7 +79,7 @@ class BrookshearAssembler {
                     else if (lines[i].length === 1)
                         this.warning(i + 1, firstToken.start + firstToken.value.length, "label alone on a line without a colon might be in error");
 
-                    if (this._labels[firstToken.value] !== undefined) {
+                    if (this._labels.has(firstToken.value)) {
                         this.error(i + 1, firstToken.start, "label '" + firstToken.value + "' redefined");
                         return false;
                     }
@@ -73,19 +88,17 @@ class BrookshearAssembler {
                         const secondToken = lines[i][1];
 
                         if (secondToken.getType(1) === "instruction") {
-                            codeSize += 2;
+                            codeSize = this.increaseCodeSize(codeSize, i, secondToken.start);
 
-                            if (codeSize > 256) {
-                                this.error(i, secondToken.start, "Program size exceeds memory size");
+                            if (codeSize < 0)
                                 return false;
-                            }
                         }
                         else {
                             this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
                             return false;
                         }
                     }
-                    this._labels[firstToken.value] = codeSize;
+                    this._labels.set(firstToken.value, codeSize);
                 }
                 else {
                     this.error(i + 1, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
@@ -101,7 +114,8 @@ class BrookshearAssembler {
     }
 
     clear() {
-        this._labels = {};
+        this._labels.clear();
+        this._rowMap.clear();
         this._machineCode = new Uint8Array();
         this._machineCodeIndex = 0;
     }
@@ -250,15 +264,13 @@ class BrookshearAssembler {
     private evaluateUnknowns(row: number, tokens: BrookshearAssemblerToken[]) {
         for (let token of tokens) {
             if (token.getType(1) === "") {
-                const value = this._labels[token.value];
-
-                if (value === undefined) {
+                if (!this._labels.has(token.value)) {
                     this.error(row, token.start, "symbol '" + token.value + "' undefined");
                     return false;
                 }
 
                 token.setTypes(["constant", "operand", "decimal"]);
-                token.value = value;
+                token.value = this._labels.get(token.value).toString();
             }
         }
 
