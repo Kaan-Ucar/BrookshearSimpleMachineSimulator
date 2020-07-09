@@ -14,12 +14,13 @@ export class App extends React.Component<any, any> {
     private _memory = React.createRef<Memory>();
     private _editor = React.createRef<any>();
     private _toolBar = React.createRef<ToolBar>();
-
+    private _rowMap = new Map<number, number>();
+    
     constructor(props) {
         super(props);
 
-        this._machine.onStop = () => this._toolBar.current.setRunning(false);
-        this._machine.onProgramCounterChange = (pc) => this._cpu.current.setProgramCounter(pc);
+        this._machine.onPause = () => this._toolBar.current.setRunning(false);
+        this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
         this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
@@ -51,9 +52,9 @@ export class App extends React.Component<any, any> {
             <div style={mainStyle}>
                 <ToolBar ref={this._toolBar}
                     onResetCPU={() => this._machine.resetCPU()}
-                    onResetMemory={() => this._machine.resetMemory()}
+                    onResetMemory={() => this.handleResetMemory()}
                     onRun={() => this.handleRun()}
-                    onPause={() => this._machine.stop()}
+                    onPause={() => this._machine.pause()}
                     onStepOver={() => this._machine.stepOver()}
                     onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
                     onBuild={() => this.handleBuild()}
@@ -83,6 +84,9 @@ export class App extends React.Component<any, any> {
     private handleBuild() {
         this._assembler.clear();
         this._editor.current.clearConsole();
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
+
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
             this._editor.current.appendMessage("Build failed.");
@@ -92,8 +96,25 @@ export class App extends React.Component<any, any> {
         this._machine.stop();
         const machineCode = this._assembler.getMachineCode();
         this._machine.setMemory(machineCode);
+        this._rowMap = this._assembler.getRowMap();
+        this.handleProgramCounterChange(this._machine.getProgramCounter());
         this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
         this._editor.current.appendMessage("Build succeded: " + machineCode.length + "B.");
+    }
+
+    private handleProgramCounterChange(programCounter: number) {
+        this._cpu.current.setProgramCounter(programCounter);
+
+        if (this._rowMap.has(programCounter))
+            this._editor.current.setArrowPosition(this._rowMap.get(programCounter));
+        else
+            this._editor.current.disappearArrow();
+    }
+
+    private handleResetMemory() {
+        this._machine.resetMemory();
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
     }
 }
 
