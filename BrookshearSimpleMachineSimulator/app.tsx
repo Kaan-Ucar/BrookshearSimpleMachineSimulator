@@ -22,7 +22,7 @@ export class App extends React.Component<any, any> {
         this._machine.onPause = () => this._toolBar.current.setRunning(false);
         this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
-        this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
+        this._machine.onMemoryChange = (address, value) => this.handleMemoryChange(address, value);
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
@@ -52,7 +52,7 @@ export class App extends React.Component<any, any> {
             <div style={mainStyle}>
                 <ToolBar ref={this._toolBar}
                     onResetCPU={() => this._machine.resetCPU()}
-                    onResetMemory={() => this.handleResetMemory()}
+                    onResetMemory={() => this._machine.resetMemory()}
                     onRun={() => this.handleRun()}
                     onPause={() => this._machine.pause()}
                     onStepOver={() => this._machine.stepOver()}
@@ -111,10 +111,16 @@ export class App extends React.Component<any, any> {
             this._editor.current.disappearArrow();
     }
 
-    private handleResetMemory() {
-        this._machine.resetMemory();
-        this._rowMap.clear();
-        this._editor.current.disappearArrow();
+    private handleMemoryChange(address, value) {
+        this._memory.current.setCell(address, value);
+
+        const key = address - (address % 2);
+        if (this._rowMap.has(key)) {
+            this._rowMap.delete(key);
+
+            if (this._machine.getProgramCounter() === key)
+                this._editor.current.disappearArrow();
+        }
     }
 }
 
