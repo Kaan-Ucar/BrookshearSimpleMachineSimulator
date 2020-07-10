@@ -16,7 +16,7 @@ class Editor extends React.Component<any, any> {
 
         this.state = {
             consoleVisible: false,
-            notifications: 0,
+            notifications: 0
         };
     }
 

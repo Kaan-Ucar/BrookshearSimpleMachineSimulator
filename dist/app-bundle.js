@@ -120,7 +120,7 @@ class App extends react_1.default.Component {
         this._machine.onPause = () => this._toolBar.current.setRunning(false);
         this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
         this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
-        this._machine.onMemoryChange = (address, value) => this._memory.current.setCell(address, value);
+        this._machine.onMemoryChange = (address, value) => this.handleMemoryChange(address, value);
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
@@ -143,7 +143,7 @@ class App extends react_1.default.Component {
             overflowY: "auto"
         };
         return (react_1.default.createElement("div", { style: mainStyle },
-            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this.handleResetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
+            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
             react_1.default.createElement("div", { style: contentStyle },
                 react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
                 react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
@@ -178,9 +178,14 @@ class App extends react_1.default.Component {
         else
             this._editor.current.disappearArrow();
     }
-    handleResetMemory() {
-        this._machine.resetMemory();
-        this._rowMap.clear();
+    handleMemoryChange(address, value) {
+        this._memory.current.setCell(address, value);
+        const key = address - (address % 2);
+        if (this._rowMap.has(key)) {
+            this._rowMap.delete(key);
+            if (this._machine.getProgramCounter() === key)
+                this._editor.current.disappearArrow();
+        }
     }
 }
 exports.App = App;
