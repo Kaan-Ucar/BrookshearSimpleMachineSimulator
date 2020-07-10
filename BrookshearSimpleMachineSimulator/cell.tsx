@@ -38,15 +38,18 @@ class Cell extends React.Component<any, any> {
         } as React.CSSProperties;
 
         return (
-            <input ref={this._input}
-                style={style}
-                value={this.state.text}
-                type="text"
-                spellCheck="false"
-                onChange={(event) => this.handleChange(event.target)}
-                onFocus={() => this.setState({ focused: true })}
-                onBlur={() => this.setState({ focused: false })}
-            />
+            <React.Fragment>
+                <input
+                    ref={this._input}
+                    style={style}
+                    value={this.state.text}
+                    type="text"
+                    spellCheck="false"
+                    onChange={(event) => this.handleChange(event.target)}
+                    onFocus={() => this.setState({ focused: true })}
+                    onBlur={() => this.setState({ focused: false })}
+                />
+            </React.Fragment>
         );
     }
 
@@ -63,7 +66,7 @@ class Cell extends React.Component<any, any> {
 
         this.setState(
             { text: formattedText },
-            () => { this._input.current.selectionStart = this._input.current.selectionEnd = cursor; }
+            () => this._input.current.selectionStart = this._input.current.selectionEnd = cursor
         );
 
         this.props.onChange(parseInt(formattedText, 16));

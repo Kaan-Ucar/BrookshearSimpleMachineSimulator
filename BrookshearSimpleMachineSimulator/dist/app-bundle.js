@@ -101,6 +101,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const react_dom_1 = __importDefault(__webpack_require__(/*! react-dom */ "./node_modules/react-dom/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
 const toolBar_1 = __importDefault(__webpack_require__(/*! ./toolBar */ "./toolBar.tsx"));
 const cpu_1 = __importDefault(__webpack_require__(/*! ./cpu */ "./cpu.tsx"));
 const memory_1 = __importDefault(__webpack_require__(/*! ./memory */ "./memory.tsx"));
@@ -127,6 +128,37 @@ class App extends react_1.default.Component {
         this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
         this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
     }
+    componentDidMount() {
+        const fibonacciExample = "; Fibonacci Numbers \n" +
+            "; sum will be in register F\n" +
+            "ldrc 0x1, 10; n\n" +
+            "ldrc 0xD, 0; previous\n" +
+            "ldrc 0xE, 1; current\n" +
+            "ldrc 0xF, 1; sum\n" +
+            "ldrc 0xB, 1; i\n" +
+            "\n" +
+            "ldrc 0x0, 0\n" +
+            "jmp 0x1, if; if (n == 0)\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "if:\n" +
+            "ldrc 0xF, 0; sum = 0\n" +
+            "jmp 0x0, end; return\n" +
+            "\n" +
+            "for_control:\n" +
+            "mov 0x1, 0x0\n" +
+            "jmp 0xB, end; if (i == n) return\n" +
+            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
+            "mov 0xE, 0xD; previous = current\n" +
+            "mov 0xF, 0xE; current = sum\n" +
+            "ldrc 0x0, 1\n" +
+            "add 0xB, 0xB, 0x0; i = i + 1\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "end:\n" +
+            "hlt";
+        this._editor.current.setText(fibonacciExample);
+    }
     render() {
         const mainStyle = {
             height: "100vh",
@@ -142,12 +174,13 @@ class App extends react_1.default.Component {
             alighItems: "stretch",
             overflowY: "auto"
         };
-        return (react_1.default.createElement("div", { style: mainStyle },
-            react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
-            react_1.default.createElement("div", { style: contentStyle },
-                react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
-                react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
-                react_1.default.createElement(editor_1.default, { ref: this._editor }))));
+        return (react_1.default.createElement(radium_1.default.StyleRoot, null,
+            react_1.default.createElement("div", { style: mainStyle },
+                react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
+                react_1.default.createElement("div", { style: contentStyle },
+                    react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
+                    react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
+                    react_1.default.createElement(editor_1.default, { ref: this._editor, onChange: () => this.clearRowMap() })))));
     }
     handleRun() {
         this._toolBar.current.setRunning(true);
@@ -156,8 +189,7 @@ class App extends react_1.default.Component {
     handleBuild() {
         this._assembler.clear();
         this._editor.current.clearConsole();
-        this._rowMap.clear();
-        this._editor.current.disappearArrow();
+        this.clearRowMap();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
             this._editor.current.appendMessage("Build failed.");
@@ -186,6 +218,10 @@ class App extends react_1.default.Component {
             if (this._machine.getProgramCounter() === key)
                 this._editor.current.disappearArrow();
         }
+    }
+    clearRowMap() {
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
     }
 }
 exports.App = App;
@@ -555,7 +591,7 @@ class BrookshearMachine {
         this._registers = new Uint8Array(16);
         this._memory = new Uint8Array(256);
         this._running = false;
-        this._stepTime = 2000;
+        this._stepTime = 2500;
         this._progress = 0;
     }
     getProgramCounter() {
@@ -618,10 +654,12 @@ class BrookshearMachine {
         this.setProgress(0);
     }
     async waitProgress() {
-        const RESOLUTION = 1000 / 60; // 60fps
+        let startTime = new Date().getTime();
         while (this._running) {
-            await new Promise((resolve) => setTimeout(resolve, RESOLUTION));
-            this.setProgress(this._progress + (RESOLUTION / this._stepTime * 100));
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            const elapsedTime = new Date().getTime() - startTime;
+            startTime += elapsedTime;
+            this.setProgress(this._progress + (elapsedTime / this._stepTime * 100));
             if (this._progress >= 100)
                 return true;
         }
@@ -762,7 +800,8 @@ class Cell extends react_1.default.Component {
                 borderColor: palette_1.default.focus
             }
         };
-        return (react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) }));
+        return (react_1.default.createElement(react_1.default.Fragment, null,
+            react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) })));
     }
     handleChange(input) {
         this.setText(input.value, input.selectionEnd);
@@ -772,7 +811,7 @@ class Cell extends react_1.default.Component {
     }
     setText(text, cursor) {
         const formattedText = Cell.formatText(text);
-        this.setState({ text: formattedText }, () => { this._input.current.selectionStart = this._input.current.selectionEnd = cursor; });
+        this.setState({ text: formattedText }, () => this._input.current.selectionStart = this._input.current.selectionEnd = cursor);
         this.props.onChange(parseInt(formattedText, 16));
     }
     focus() {
@@ -864,9 +903,10 @@ const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modul
 const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
 const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class CPUCell extends react_1.default.Component {
-    constructor() {
-        super(...arguments);
+    constructor(props) {
+        super(props);
         this._cell = react_1.default.createRef();
+        this.state = { flashing: false };
     }
     render() {
         const style = {
@@ -875,6 +915,13 @@ class CPUCell extends react_1.default.Component {
             fontFamily: "arial",
             alignItems: "center",
             padding: "4px 16px",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.flashing ? radium_1.default.keyframes({
+                "from": { background: palette_1.default.flash },
+                "to": { background: "" }
+            }) : "none",
             ":hover": {
                 background: palette_1.default.highlightBackground
             },
@@ -888,6 +935,8 @@ class CPUCell extends react_1.default.Component {
     }
     setValue(value) {
         this._cell.current.setValue(value);
+        if (!this.state.flashing && !this._cell.current.state.focused)
+            this.setState({ flashing: true }, () => setTimeout(() => this.setState({ flashing: false }), 1000));
     }
 }
 exports.default = radium_1.default(CPUCell);
@@ -923,7 +972,7 @@ class Editor extends react_1.default.Component {
         this._console = react_1.default.createRef();
         this.state = {
             consoleVisible: false,
-            notifications: 0,
+            notifications: 0
         };
     }
     componentDidMount() {
@@ -931,35 +980,6 @@ class Editor extends react_1.default.Component {
         this._console.current.editor.getSession().setOption("useWorker", false);
     }
     render() {
-        const fibonacciExample = "; Fibonacci Numbers \n" +
-            "; enter n in register 1\n" +
-            "; sum will be in register F\n" +
-            "; n = 0x1\n" +
-            "ldrc 0xD, 0; previous\n" +
-            "ldrc 0xE, 1; current\n" +
-            "ldrc 0xF, 1; sum\n" +
-            "ldrc 0xB, 1; i\n" +
-            "\n" +
-            "ldrc 0x0, 0\n" +
-            "jmp 0x1, if ; if (n == 0)\n" +
-            "jmp 0x0, for_control\n" +
-            "\n" +
-            "if:\n" +
-            "ldrc 0xF, 0; sum = 0\n" +
-            "jmp 0x0, end; return\n" +
-            "\n" +
-            "for_control:\n" +
-            "mov 0x1, 0x0\n" +
-            "jmp 0xB, end; if (i == n) return\n" +
-            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
-            "mov 0xE, 0xD; previous = current\n" +
-            "mov 0xF, 0xE; current = sum\n" +
-            "ldrc 0x0, 1\n" +
-            "add 0xB, 0xB, 0x0; i = i + 1\n" +
-            "jmp 0x0, for_control\n" +
-            "\n" +
-            "end:\n" +
-            "hlt";
         const style = {
             display: "flex",
             flexDirection: "column",
@@ -1020,7 +1040,7 @@ class Editor extends react_1.default.Component {
                         color: palette_1.default.default,
                         clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
                     } }),
-                react_1.default.createElement(react_ace_1.default, { defaultValue: fibonacciExample, ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true }),
+                react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true, onChange: this.props.onChange }),
                 react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
                     react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
                     react_1.default.createElement("div", { style: notificationsBubbleStyle },
@@ -1087,6 +1107,9 @@ class Editor extends react_1.default.Component {
     }
     disappearArrow() {
         this._editor.current.editor.getSession().clearBreakpoints();
+    }
+    setText(text) {
+        this._editor.current.editor.setValue(text, -1);
     }
 }
 exports.default = radium_1.default(Editor);
@@ -1258,15 +1281,23 @@ const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modul
 const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
 const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
 class MemoryCellPair extends react_1.default.Component {
-    constructor() {
-        super(...arguments);
+    constructor(props) {
+        super(props);
         this._firstCell = react_1.default.createRef();
         this._secondCell = react_1.default.createRef();
+        this.state = {
+            firstFlashing: false,
+            secondFlashing: false
+        };
     }
     static toAddressLabel(address) {
         return address.toString(16).toUpperCase().padStart(2, "0");
     }
     render() {
+        const flashKeyframes = radium_1.default.keyframes({
+            "from": { background: palette_1.default.flash },
+            "to": { background: "" }
+        });
         const style = {
             fontFamily: "Lucida Console",
             fontSize: "small",
@@ -1280,6 +1311,10 @@ class MemoryCellPair extends react_1.default.Component {
             padding: "4px",
             display: "inline-block",
             float: "right",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.firstFlashing ? flashKeyframes : "none",
             ":focus": {
                 color: palette_1.default.focus
             },
@@ -1291,6 +1326,10 @@ class MemoryCellPair extends react_1.default.Component {
             padding: "4px",
             display: "inline-block",
             float: "left",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.secondFlashing ? flashKeyframes : "none",
             ":focus": {
                 color: palette_1.default.focus
             },
@@ -1316,9 +1355,13 @@ class MemoryCellPair extends react_1.default.Component {
     }
     setFirstCell(value) {
         this._firstCell.current.setValue(value);
+        if (!this.state.firstFlashing && !this._firstCell.current.state.focused)
+            this.setState({ firstFlashing: true }, () => setTimeout(() => this.setState({ firstFlashing: false }), 1000));
     }
     setSecondCell(value) {
         this._secondCell.current.setValue(value);
+        if (!this.state.secondFlashing && !this._secondCell.current.state.focused)
+            this.setState({ secondFlashing: true }, () => setTimeout(() => this.setState({ secondFlashing: false }), 1000));
     }
 }
 exports.default = radium_1.default(MemoryCellPair);
@@ -65519,6 +65562,7 @@ const Palette = {
     focus: "#d31ac4",
     error: "red",
     success: "green",
+    flash: "#82801B",
     highlightBackground: "#2e0e40",
     toolBarBackground: "#000a1b",
     toolBarHighlightBackground: "#132044",
@@ -65627,7 +65671,7 @@ class ToolBar extends react_1.default.Component {
             react_1.default.createElement(toolButton_1.default, { key: "Clear Editor", icon: "restore_page", label: "Clear Editor", onClick: this.props.onClearEditor }),
             react_1.default.createElement(toolButton_1.default, { key: "Build", icon: "build", label: "Build", onClick: this.props.onBuild }),
             runButton,
-            react_1.default.createElement(slider_1.default, { label: "Speed", min: 4000, max: 0, defaultValue: 2000, onChange: this.props.onStepTimeChange }),
+            react_1.default.createElement(slider_1.default, { label: "Speed", min: 5000, max: 0, defaultValue: 2500, onChange: this.props.onStepTimeChange }),
             react_1.default.createElement(toolButton_1.default, { key: "Step Over", icon: "redo", label: "Step Over", onClick: this.props.onStepOver }),
             react_1.default.createElement(infoBar_1.default, { ref: this._infoBar }),
             react_1.default.createElement("a", { style: { textDecoration: "none" }, href: "https://github.com/Kaan-Ucar/BrookshearSimpleMachineSimulator", target: "_blank" },
