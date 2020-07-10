@@ -11,7 +11,7 @@
     private _registers = new Uint8Array(16);
     private _memory = new Uint8Array(256);
     private _running = false;
-    private _stepTime = 2000;
+    private _stepTime = 2500;
     private _progress = 0;
 
     getProgramCounter() {
@@ -94,11 +94,15 @@
     }
 
     private async waitProgress() {
-        const RESOLUTION = 1000 / 60; // 60fps
+        let startTime = new Date().getTime();
 
         while (this._running) {
-            await new Promise((resolve) => setTimeout(resolve, RESOLUTION));
-            this.setProgress(this._progress + (RESOLUTION / this._stepTime * 100));
+            await new Promise((resolve) => setTimeout(resolve, 1));
+
+            const elapsedTime = new Date().getTime() - startTime;
+            startTime += elapsedTime;
+
+            this.setProgress(this._progress + (elapsedTime / this._stepTime * 100));
 
             if (this._progress >= 100)
                 return true;

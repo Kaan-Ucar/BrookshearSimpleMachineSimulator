@@ -78,9 +78,9 @@ class ToolBar extends React.Component<any, any> {
                 />
                 {runButton}
                 <Slider label="Speed"
-                    min={4000}
+                    min={5000}
                     max={0}
-                    defaultValue={2000}
+                    defaultValue={2500}
                     onChange={this.props.onStepTimeChange}
                 />
                 <ToolButton

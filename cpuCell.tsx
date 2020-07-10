@@ -6,6 +6,12 @@ import Palette from "./palette";
 class CPUCell extends React.Component<any, any> {
     private _cell = React.createRef<any>();
 
+    constructor(props) {
+        super(props);
+
+        this.state = { flashing: false };
+    }
+
     render() {
         const style = {
             display: "flex",
@@ -13,6 +19,14 @@ class CPUCell extends React.Component<any, any> {
             fontFamily: "arial",
             alignItems: "center",
             padding: "4px 16px",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+
+            animationName: this.state.flashing ? Radium.keyframes({
+                "from": { background: Palette.flash },
+                "to": { background: "" }
+            }) : "none",
 
             ":hover": {
                 background: Palette.highlightBackground
@@ -21,7 +35,7 @@ class CPUCell extends React.Component<any, any> {
             ":focus": {
                 color: Palette.focus
             }
-        } as React.CSSProperties;
+        } as unknown as React.CSSProperties;
 
         return (
             <div
@@ -39,6 +53,10 @@ class CPUCell extends React.Component<any, any> {
 
     setValue(value: number) {
         this._cell.current.setValue(value);
+
+        if (!this.state.flashing && !this._cell.current.state.focused)
+            this.setState({ flashing: true },
+                () => setTimeout(() => this.setState({ flashing: false }), 1000));
     }
 }
 

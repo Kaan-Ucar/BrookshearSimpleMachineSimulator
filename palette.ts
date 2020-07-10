@@ -4,6 +4,7 @@ const Palette = {
     focus: "#d31ac4",
     error: "red",
     success: "green",
+    flash: "#82801B",
     highlightBackground: "#2e0e40",
     toolBarBackground: "#000a1b",
     toolBarHighlightBackground: "#132044",

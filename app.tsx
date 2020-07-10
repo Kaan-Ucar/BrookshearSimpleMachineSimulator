@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import ReactDOM from "react-dom";
+import Radium from "radium";
 import ToolBar from "./toolBar";
 import CPU from "./cpu";
 import Memory from "./memory";
@@ -31,6 +32,40 @@ export class App extends React.Component<any, any> {
         this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
     }
 
+    componentDidMount() {
+        const fibonacciExample =
+            "; Fibonacci Numbers \n" +
+            "; sum will be in register F\n" +
+            "ldrc 0x1, 10; n\n" +
+            "ldrc 0xD, 0; previous\n" +
+            "ldrc 0xE, 1; current\n" +
+            "ldrc 0xF, 1; sum\n" +
+            "ldrc 0xB, 1; i\n" +
+            "\n" +
+            "ldrc 0x0, 0\n" +
+            "jmp 0x1, if; if (n == 0)\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "if:\n" +
+            "ldrc 0xF, 0; sum = 0\n" +
+            "jmp 0x0, end; return\n" +
+            "\n" +
+            "for_control:\n" +
+            "mov 0x1, 0x0\n" +
+            "jmp 0xB, end; if (i == n) return\n" +
+            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
+            "mov 0xE, 0xD; previous = current\n" +
+            "mov 0xF, 0xE; current = sum\n" +
+            "ldrc 0x0, 1\n" +
+            "add 0xB, 0xB, 0x0; i = i + 1\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "end:\n" +
+            "hlt";
+
+        this._editor.current.setText(fibonacciExample);
+    }
+
     render() {
         const mainStyle = {
             height: "100vh",
@@ -49,30 +84,34 @@ export class App extends React.Component<any, any> {
         } as React.CSSProperties;
 
         return (
-            <div style={mainStyle}>
-                <ToolBar ref={this._toolBar}
-                    onResetCPU={() => this._machine.resetCPU()}
-                    onResetMemory={() => this._machine.resetMemory()}
-                    onRun={() => this.handleRun()}
-                    onPause={() => this._machine.pause()}
-                    onStepOver={() => this._machine.stepOver()}
-                    onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
-                    onBuild={() => this.handleBuild()}
-                    onClearEditor={() => this._editor.current.clearEditor()}
-                />
-                <div style={contentStyle}>
-                    <CPU ref={this._cpu}
-                        registers={16}
-                        onProgramCounterChange={(value) => this._machine.setProgramCounter(value)}
-                        onRegisterChange={(register, value) => this._machine.setRegister(register, value)}
+            <Radium.StyleRoot>
+                <div style={mainStyle}>
+                    <ToolBar ref={this._toolBar}
+                        onResetCPU={() => this._machine.resetCPU()}
+                        onResetMemory={() => this._machine.resetMemory()}
+                        onRun={() => this.handleRun()}
+                        onPause={() => this._machine.pause()}
+                        onStepOver={() => this._machine.stepOver()}
+                        onStepTimeChange={(ms) => this._machine.setStepTime(ms)}
+                        onBuild={() => this.handleBuild()}
+                        onClearEditor={() => this._editor.current.clearEditor()}
                     />
-                    <Memory ref={this._memory}
-                        memory={256}
-                        onChange={(address, value) => this._machine.setMemoryCell(address, value)}
-                    />
-                    <Editor ref={this._editor} />
+                    <div style={contentStyle}>
+                        <CPU ref={this._cpu}
+                            registers={16}
+                            onProgramCounterChange={(value) => this._machine.setProgramCounter(value)}
+                            onRegisterChange={(register, value) => this._machine.setRegister(register, value)}
+                        />
+                        <Memory ref={this._memory}
+                            memory={256}
+                            onChange={(address, value) => this._machine.setMemoryCell(address, value)}
+                        />
+                        <Editor ref={this._editor}
+                            onChange={() => this.clearRowMap()}
+                        />
+                    </div>
                 </div>
-            </div>
+            </Radium.StyleRoot>
         );
     }
 
@@ -84,8 +123,7 @@ export class App extends React.Component<any, any> {
     private handleBuild() {
         this._assembler.clear();
         this._editor.current.clearConsole();
-        this._rowMap.clear();
-        this._editor.current.disappearArrow();
+        this.clearRowMap();
 
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
@@ -121,6 +159,11 @@ export class App extends React.Component<any, any> {
             if (this._machine.getProgramCounter() === key)
                 this._editor.current.disappearArrow();
         }
+    }
+
+    private clearRowMap() {
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
     }
 }
 

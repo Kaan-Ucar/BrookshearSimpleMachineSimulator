@@ -4,14 +4,28 @@ import Cell from "./cell";
 import Palette from "./palette";
 
 class MemoryCellPair extends React.Component<any, any> {
+    private _firstCell = React.createRef<any>();
+    private _secondCell = React.createRef<any>();
+
     static toAddressLabel(address: number) {
         return address.toString(16).toUpperCase().padStart(2, "0");
     }
 
-    private _firstCell = React.createRef<any>();
-    private _secondCell = React.createRef<any>();
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            firstFlashing: false,
+            secondFlashing: false
+        };
+    }
 
     render() {
+        const flashKeyframes = Radium.keyframes({
+            "from": { background: Palette.flash },
+            "to": { background: "" }
+        });
+
         const style = {
             fontFamily: "Lucida Console",
             fontSize: "small",
@@ -26,6 +40,10 @@ class MemoryCellPair extends React.Component<any, any> {
             padding: "4px",
             display: "inline-block",
             float: "right",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.firstFlashing ? flashKeyframes : "none",
 
             ":focus": {
                 color: Palette.focus
@@ -34,12 +52,16 @@ class MemoryCellPair extends React.Component<any, any> {
             ":hover": {
                 background: Palette.highlightBackground
             }
-        } as React.CSSProperties;
+        } as unknown as React.CSSProperties;
 
         const secondCellStyle = {
             padding: "4px",
             display: "inline-block",
             float: "left",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.secondFlashing ? flashKeyframes : "none",
 
             ":focus": {
                 color: Palette.focus
@@ -48,7 +70,7 @@ class MemoryCellPair extends React.Component<any, any> {
             ":hover": {
                 background: Palette.highlightBackground
             }
-        } as React.CSSProperties;
+        } as unknown as React.CSSProperties;
 
         const labelStyle = {
             margin: "auto",
@@ -90,10 +112,18 @@ class MemoryCellPair extends React.Component<any, any> {
 
     setFirstCell(value: number) {
         this._firstCell.current.setValue(value);
+
+        if (!this.state.firstFlashing && !this._firstCell.current.state.focused)
+            this.setState({ firstFlashing: true },
+                () => setTimeout(() => this.setState({ firstFlashing: false }), 1000));
     }
 
     setSecondCell(value: number) {
         this._secondCell.current.setValue(value);
+
+        if (!this.state.secondFlashing && !this._secondCell.current.state.focused)
+            this.setState({ secondFlashing: true },
+                () => setTimeout(() => this.setState({ secondFlashing: false }), 1000));
     }
 }
 
