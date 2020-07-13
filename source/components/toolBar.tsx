@@ -1,7 +1,7 @@
 import React from "react";
 import ToolButton from "./toolButton";
 import Slider from "./slider";
-import Palette from "./palette";
+import Palette from "../palette";
 import InfoBar from "./infoBar";
 
 class ToolBar extends React.Component<any, any> {

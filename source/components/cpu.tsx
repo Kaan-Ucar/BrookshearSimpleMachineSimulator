@@ -1,6 +1,6 @@
 import React from "react";
 import CPUCell from "./cpuCell";
-import Palette from "./palette";
+import Palette from "../palette";
 
 class CPU extends React.Component<any, any> {
     private _pc = React.createRef<any>();

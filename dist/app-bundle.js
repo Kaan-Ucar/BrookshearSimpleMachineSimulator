@@ -101,1270 +101,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const react_dom_1 = __importDefault(__webpack_require__(/*! react-dom */ "./node_modules/react-dom/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const toolBar_1 = __importDefault(__webpack_require__(/*! ./toolBar */ "./toolBar.tsx"));
-const cpu_1 = __importDefault(__webpack_require__(/*! ./cpu */ "./cpu.tsx"));
-const memory_1 = __importDefault(__webpack_require__(/*! ./memory */ "./memory.tsx"));
-const brookshearMachine_1 = __importDefault(__webpack_require__(/*! ./brookshearMachine */ "./brookshearMachine.ts"));
-const editor_1 = __importDefault(__webpack_require__(/*! ./editor */ "./editor.tsx"));
-const brookshearAssembler_1 = __importDefault(__webpack_require__(/*! ./brookshearAssembler */ "./brookshearAssembler.ts"));
-class App extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._machine = new brookshearMachine_1.default();
-        this._assembler = new brookshearAssembler_1.default();
-        this._cpu = react_1.default.createRef();
-        this._memory = react_1.default.createRef();
-        this._editor = react_1.default.createRef();
-        this._toolBar = react_1.default.createRef();
-        this._rowMap = new Map();
-        this._machine.onPause = () => this._toolBar.current.setRunning(false);
-        this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
-        this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
-        this._machine.onMemoryChange = (address, value) => this.handleMemoryChange(address, value);
-        this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
-        this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
-        this._machine.onError = (message) => this._toolBar.current.setError(message);
-        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
-        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
-    }
-    componentDidMount() {
-        const fibonacciExample = "; Fibonacci Numbers \n" +
-            "; sum will be in register F\n" +
-            "ldrc 0x1, 10; n\n" +
-            "ldrc 0xD, 0; previous\n" +
-            "ldrc 0xE, 1; current\n" +
-            "ldrc 0xF, 1; sum\n" +
-            "ldrc 0xB, 1; i\n" +
-            "\n" +
-            "ldrc 0x0, 0\n" +
-            "jmp 0x1, if; if (n == 0)\n" +
-            "jmp 0x0, for_control\n" +
-            "\n" +
-            "if:\n" +
-            "ldrc 0xF, 0; sum = 0\n" +
-            "jmp 0x0, end; return\n" +
-            "\n" +
-            "for_control:\n" +
-            "mov 0x1, 0x0\n" +
-            "jmp 0xB, end; if (i == n) return\n" +
-            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
-            "mov 0xE, 0xD; previous = current\n" +
-            "mov 0xF, 0xE; current = sum\n" +
-            "ldrc 0x0, 1\n" +
-            "add 0xB, 0xB, 0x0; i = i + 1\n" +
-            "jmp 0x0, for_control\n" +
-            "\n" +
-            "end:\n" +
-            "hlt";
-        this._editor.current.setText(fibonacciExample);
-    }
-    render() {
-        const mainStyle = {
-            height: "100vh",
-            width: "100%",
-            display: "flex",
-            flexDirection: "column"
-        };
-        const contentStyle = {
-            display: "flex",
-            flexGrow: 1,
-            flexDirection: "row",
-            alignContent: "stretch",
-            alighItems: "stretch",
-            overflowY: "auto"
-        };
-        return (react_1.default.createElement(radium_1.default.StyleRoot, null,
-            react_1.default.createElement("div", { style: mainStyle },
-                react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
-                react_1.default.createElement("div", { style: contentStyle },
-                    react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
-                    react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
-                    react_1.default.createElement(editor_1.default, { ref: this._editor, onChange: () => this.clearRowMap() })))));
-    }
-    handleRun() {
-        this._toolBar.current.setRunning(true);
-        this._machine.run();
-    }
-    handleBuild() {
-        this._assembler.clear();
-        this._editor.current.clearConsole();
-        this.clearRowMap();
-        if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
-            this._toolBar.current.setError("BUILD FAILED", true);
-            this._editor.current.appendMessage("Build failed.");
-            return;
-        }
-        this._machine.stop();
-        const machineCode = this._assembler.getMachineCode();
-        this._machine.setMemory(machineCode);
-        this._rowMap = this._assembler.getRowMap();
-        this.handleProgramCounterChange(this._machine.getProgramCounter());
-        this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
-        this._editor.current.appendMessage("Build succeded: " + machineCode.length + "B.");
-    }
-    handleProgramCounterChange(programCounter) {
-        this._cpu.current.setProgramCounter(programCounter);
-        if (this._rowMap.has(programCounter))
-            this._editor.current.setArrowPosition(this._rowMap.get(programCounter));
-        else
-            this._editor.current.disappearArrow();
-    }
-    handleMemoryChange(address, value) {
-        this._memory.current.setCell(address, value);
-        const key = address - (address % 2);
-        if (this._rowMap.has(key)) {
-            this._rowMap.delete(key);
-            if (this._machine.getProgramCounter() === key)
-                this._editor.current.disappearArrow();
-        }
-    }
-    clearRowMap() {
-        this._rowMap.clear();
-        this._editor.current.disappearArrow();
-    }
-}
-exports.App = App;
+const root_1 = __importDefault(__webpack_require__(/*! ./source/components/root */ "./source/components/root.tsx"));
 document.body.style.margin = "0";
-react_dom_1.default.render(react_1.default.createElement(App, null), document.getElementById('root'));
-
-
-/***/ }),
-
-/***/ "./assemblyBrookshearMode.js":
-/*!***********************************!*\
-  !*** ./assemblyBrookshearMode.js ***!
-  \***********************************/
-/*! exports provided: AssemblyBrookshearHighlightRules, default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AssemblyBrookshearHighlightRules", function() { return AssemblyBrookshearHighlightRules; });
-class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules { 
-    constructor() {
-        super();
-
-        this.$rules = {
-            start:
-                [
-                    {
-                        token: 'keyword.instruction',
-                        regex: '\\b(?:ldr|ldrc|str|mov|add|fadd|or|and|xor|ror|jmp|hlt)\\b',
-                        caseInsensitive: true
-                    },
-                    {
-                        token: 'constant.operand.decimal',
-                        regex: '\\b[0-9]+\\b'
-                    },
-                    {
-                        token: 'constant.operand.hexadecimal',
-                        regex: '\\b0x[A-F0-9]+\\b',
-                        caseInsensitive: true
-                    },
-                    {
-                        token: 'constant.operand.hexadecimal',
-                        regex: '\\b[A-F0-9]+h\\b',
-                        caseInsensitive: true
-                    },
-                    {
-                        token: 'entity.label',
-                        regex: '^[\\w.]+?:'
-                    },
-                    {
-                        token: 'entity.label',
-                        regex: '^[\\w.]+?\\b'
-                    },
-                    {
-                        token: 'comment.comment',
-                        regex: ';.*$'
-                    },
-                    {
-                        token: 'punctuation.comma',
-                        regex: ','
-                    },
-                    {
-                        token: 'text.whitespace',
-                        regex: '\\s+'
-                    }
-                ]
-        };
-    }
-}
-
-class AssemblyBrookshearMode extends window.ace.acequire("ace/mode/text").Mode {
-    constructor() {
-        super();
-        this.HighlightRules = AssemblyBrookshearHighlightRules;
-    }
-}
-
-/* harmony default export */ __webpack_exports__["default"] = (AssemblyBrookshearMode);
-
-/***/ }),
-
-/***/ "./brookshearAssembler.ts":
-/*!********************************!*\
-  !*** ./brookshearAssembler.ts ***!
-  \********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class BrookshearAssembler {
-    constructor() {
-        this.onWarning = (row, column, message) => { console.log("warning(" + row + "," + column + "): " + message); };
-        this.onError = (row, column, message) => { console.log("error(" + row + "," + column + "): " + message); };
-        this._labels = new Map();
-        this._machineCode = new Uint8Array();
-        this._machineCodeIndex = 0;
-        this._rowMap = new Map();
-    }
-    warning(row, column, message) {
-        this.onWarning(row, column, message);
-    }
-    error(row, column, message) {
-        this.onError(row, column, message);
-    }
-    getMachineCode() {
-        return new Uint8Array(this._machineCode);
-    }
-    getRowMap() {
-        return new Map(this._rowMap);
-    }
-    assemblyLines(lines) {
-        let filteredLines = [];
-        for (let line of lines)
-            filteredLines.push(BrookshearAssembler.removeTypes(line, 1, ["whitespace", "comment"]));
-        if (!this.controlLines(filteredLines))
-            return false;
-        for (let i = 0; i < filteredLines.length; ++i)
-            filteredLines[i] = BrookshearAssembler.removeTypes(filteredLines[i], 1, ["label"]);
-        for (let i = 0; i < filteredLines.length; ++i)
-            if (!this.assemblyInstructionLine(i + 1, filteredLines[i]))
-                return false;
-        const haltInstruction = parseInt("0xC0");
-        if (this._machineCode.length > 0 && this._machineCode[this._machineCode.length - 2] !== haltInstruction)
-            this.warning(lines.length, 0, "No halt instruction at end of program");
-        return true;
-    }
-    increaseCodeSize(codeSize, row, column) {
-        this._rowMap.set(codeSize, row);
-        codeSize += 2;
-        if (codeSize > 256) {
-            this.error(row, column, "Program size exceeds memory size");
-            return -1;
-        }
-        return codeSize;
-    }
-    controlLines(lines) {
-        let codeSize = 0;
-        for (let i = 0; i < lines.length; ++i)
-            if (lines[i].length > 0) {
-                const firstToken = lines[i][0];
-                if (firstToken.getType(1) === "instruction") {
-                    codeSize = this.increaseCodeSize(codeSize, i, firstToken.start);
-                    if (codeSize < 0)
-                        return false;
-                }
-                else if (firstToken.getType(1) === "label") {
-                    if (firstToken.value[firstToken.value.length - 1] === ':')
-                        firstToken.value = firstToken.value.slice(0, -1);
-                    else if (lines[i].length === 1)
-                        this.warning(i + 1, firstToken.start + firstToken.value.length, "label alone on a line without a colon might be in error");
-                    if (this._labels.has(firstToken.value)) {
-                        this.error(i + 1, firstToken.start, "label '" + firstToken.value + "' redefined");
-                        return false;
-                    }
-                    if (lines[i].length > 1) {
-                        const secondToken = lines[i][1];
-                        if (secondToken.getType(1) === "instruction") {
-                            codeSize = this.increaseCodeSize(codeSize, i, secondToken.start);
-                            if (codeSize < 0)
-                                return false;
-                        }
-                        else {
-                            this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
-                            return false;
-                        }
-                    }
-                    this._labels.set(firstToken.value, codeSize);
-                }
-                else {
-                    this.error(i + 1, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
-                    return false;
-                }
-            }
-        this._machineCode = new Uint8Array(codeSize);
-        this._machineCodeIndex = 0;
-        return true;
-    }
-    clear() {
-        this._labels.clear();
-        this._rowMap.clear();
-        this._machineCode = new Uint8Array();
-        this._machineCodeIndex = 0;
-    }
-    static removeTypes(tokens, typeIndex, types) {
-        let filteredTokens = [];
-        for (let token of tokens) {
-            let push = true;
-            for (let i = 0; push && i < types.length; ++i)
-                if (token.getType(typeIndex) === types[i])
-                    push = false;
-            if (push)
-                filteredTokens.push(token);
-        }
-        return filteredTokens;
-    }
-    assemblyInstructionLine(row, line) {
-        if (line.length === 0)
-            return true;
-        if (!this.evaluateUnknowns(row, line))
-            return false;
-        const instruction = line[0].value.toLowerCase();
-        let opcode = 0;
-        let operandDrafts;
-        switch (instruction) {
-            case "ldr":
-                opcode = 1;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
-                break;
-            case "ldrc":
-                opcode = 2;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
-                break;
-            case "str":
-                opcode = 3;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
-                break;
-            case "mov":
-                opcode = 4;
-                operandDrafts = [{ offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "add":
-                opcode = 5;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "fadd":
-                opcode = 6;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "or":
-                opcode = 7;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "and":
-                opcode = 8;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "xor":
-                opcode = 9;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "ror":
-                opcode = 10;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 3, size: 1 }];
-                break;
-            case "jmp":
-                opcode = 11;
-                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
-                break;
-            case "hlt":
-                opcode = 12;
-                operandDrafts = [];
-                break;
-            default:
-                this.error(row, line[0].start, "Could not resolve instruction: " + instruction);
-                return false;
-        }
-        if (operandDrafts.length > 0 && (line.length - 1) !== ((2 * operandDrafts.length) - 1)) {
-            this.error(row, line[0].start + line[0].value.length, "invalid combination of opcode and operands");
-            return false;
-        }
-        let operandTokens = [];
-        let i = 1;
-        while (i < line.length) {
-            if (line[i].getType(1) === "operand") {
-                operandTokens.push(line[i]);
-            }
-            else {
-                this.error(row, line[i].start, "operand expected, but found " + line[i].getType(1) + ": " + line[i].value);
-                return false;
-            }
-            ++i;
-            if (i < line.length) {
-                if (line[i].getType(1) !== "comma") {
-                    this.error(row, line[i].start, "comma expected after operand, but found " + line[i].getType(1) + ": " + line[i].value);
-                    return false;
-                }
-                ++i;
-            }
-        }
-        let halfBytes = [opcode, 0, 0, 0];
-        for (let i = 0; i < operandTokens.length; ++i) {
-            const limit = 16 ** operandDrafts[i].size;
-            let value = parseInt(operandTokens[i].value);
-            if (value >= limit) {
-                this.warning(row, operandTokens[i].start, "operand value exceeds bounds");
-                value = value % limit;
-            }
-            for (let j = 0; j < operandDrafts[i].size; ++j)
-                halfBytes[operandDrafts[i].offset + j] = (value >>> ((operandDrafts[i].size - 1 - j) * 4)) & 15;
-        }
-        this._machineCode[this._machineCodeIndex++] = (halfBytes[0] << 4) + halfBytes[1];
-        this._machineCode[this._machineCodeIndex++] = (halfBytes[2] << 4) + halfBytes[3];
-        return true;
-    }
-    evaluateUnknowns(row, tokens) {
-        for (let token of tokens) {
-            if (token.getType(1) === "") {
-                if (!this._labels.has(token.value)) {
-                    this.error(row, token.start, "symbol '" + token.value + "' undefined");
-                    return false;
-                }
-                token.setTypes(["constant", "operand", "decimal"]);
-                token.value = this._labels.get(token.value).toString();
-            }
-        }
-        return true;
-    }
-}
-exports.default = BrookshearAssembler;
-
-
-/***/ }),
-
-/***/ "./brookshearAssemblerToken.ts":
-/*!*************************************!*\
-  !*** ./brookshearAssemblerToken.ts ***!
-  \*************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class BrookshearAssemblerToken {
-    constructor(types, value, start, index) {
-        this._types = types;
-        this.value = value;
-        this.start = start;
-        this.index = index;
-    }
-    getType(index) {
-        if (index >= this._types.length)
-            return "";
-        return this._types[index];
-    }
-    setTypes(types) {
-        this._types = types;
-    }
-}
-exports.default = BrookshearAssemblerToken;
-
-
-/***/ }),
-
-/***/ "./brookshearMachine.ts":
-/*!******************************!*\
-  !*** ./brookshearMachine.ts ***!
-  \******************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class BrookshearMachine {
-    constructor() {
-        this.onPause = () => { };
-        this.onProgramCounterChange = (pc) => { };
-        this.onRegisterChange = (register, value) => { };
-        this.onMemoryChange = (address, value) => { };
-        this.onProgressChange = (progress) => { };
-        this.onInfo = (message) => { };
-        this.onError = (message) => { };
-        this._programCounter = 0;
-        this._registers = new Uint8Array(16);
-        this._memory = new Uint8Array(256);
-        this._running = false;
-        this._stepTime = 2500;
-        this._progress = 0;
-    }
-    getProgramCounter() {
-        return this._programCounter;
-    }
-    resetCPU() {
-        this.setProgramCounter(0);
-        for (let i = 0; i < this._registers.length; ++i)
-            this.setRegister(i, 0);
-    }
-    resetMemory() {
-        for (let i = 0; i < this._memory.length; ++i)
-            this.setMemoryCell(i, 0);
-    }
-    setStepTime(ms) {
-        this._stepTime = ms;
-    }
-    setProgramCounter(pc) {
-        this.setProgress(0);
-        if (pc === this._programCounter)
-            return;
-        this._programCounter = pc;
-        this.onProgramCounterChange(pc);
-    }
-    setRegister(register, value) {
-        if (this._registers[register] === value)
-            return;
-        this._registers[register] = value;
-        this.onRegisterChange(register, value);
-    }
-    setMemoryCell(address, value) {
-        if (this._memory[address] === value)
-            return;
-        this._memory[address] = value;
-        this.onMemoryChange(address, value);
-    }
-    setMemory(values, from = 0) {
-        const to = Math.min(this._memory.length, values.length);
-        for (let i = 0; i < to; ++i)
-            this.setMemoryCell(from + i, values[i]);
-    }
-    setProgress(progress) {
-        this._progress = Math.min(progress, 100);
-        this.onProgressChange(this._progress);
-    }
-    async run() {
-        if (this._running)
-            return;
-        this._running = true;
-        do {
-            await this.runStep(true);
-        } while (this._running);
-    }
-    pause() {
-        this._running = false;
-        this.onPause();
-    }
-    stop() {
-        this.pause();
-        this.setProgress(0);
-    }
-    async waitProgress() {
-        let startTime = new Date().getTime();
-        while (this._running) {
-            await new Promise((resolve) => setTimeout(resolve, 1));
-            const elapsedTime = new Date().getTime() - startTime;
-            startTime += elapsedTime;
-            this.setProgress(this._progress + (elapsedTime / this._stepTime * 100));
-            if (this._progress >= 100)
-                return true;
-        }
-        return false;
-    }
-    stepOver() {
-        if (this._running)
-            this._progress = 100;
-        else
-            this.runStep(false);
-    }
-    async runStep(wait) {
-        const opcode = this._memory[this._programCounter] >>> 4;
-        const operandA = this._memory[this._programCounter] & 15;
-        const operandBC = this._memory[this._programCounter + 1];
-        const operandB = operandBC >>> 4;
-        const operandC = operandBC & 15;
-        const strA = operandA.toString(16).toUpperCase();
-        const strBC = operandBC.toString(16).padStart(2, "0").toUpperCase();
-        const strB = operandB.toString(16).toUpperCase();
-        const strC = operandC.toString(16).toUpperCase();
-        let message = "";
-        let instruction = () => { };
-        switch (opcode) {
-            case 1: // Copy the content of memory cell BC to register A.
-                message = "Copy the content of memory cell " + strBC + " to register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._memory[operandBC]); };
-                break;
-            case 2: // Copy the bit-string BC to register A.
-                message = "Copy the bit-string " + strBC + " to register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, operandBC); };
-                break;
-            case 3: // Copy the content of register A to memory cell BC.
-                message = "Copy the content of register " + strA + " to memory cell " + strBC + ".";
-                instruction = () => { this.setMemoryCell(operandBC, this._registers[operandA]); };
-                break;
-            case 4: // Copy the content of register B to register C.
-                message = "Copy the content of register " + strB + " to register " + strC + ".";
-                instruction = () => { this.setRegister(operandC, this._registers[operandB]); };
-                break;
-            case 5: // Add the content of register B and register C, and put the result in register A. Data is interpreted as integers in two's-complement notation.
-                message = "Add the content of register " + strB + " and register " + strC + " as integers, and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
-                break;
-            case 6: // Add the content of register B and register C, and put the result in register A. Data is interpreted as floats in floating point notation.
-                message = "Add the content of register " + strB + " and register " + strC + " as floats, and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
-                break;
-            case 7: // Bitwise OR the content of register B and C, and put the result in register A.
-                message = "Bitwise OR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] | this._registers[operandC]); };
-                break;
-            case 8: // Bitwise AND the content of register B and C, and put the result in register A.
-                message = "Bitwise AND the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] & this._registers[operandC]); };
-                break;
-            case 9: // Bitwise XOR the content of register B and C, and put the result in register A.
-                message = "Bitwise XOR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] ^ this._registers[operandC]); };
-                break;
-            case 10: // Rotate the content of register A cyclically right C steps.
-                message = "Rotate the content of register " + strA + " cyclically right " + strC + " steps.";
-                instruction = () => { this.setRegister(operandA, (this._registers[operandA] >>> this._registers[operandC]) | (this._registers[operandA] << (8 - this._registers[operandC]))); };
-                break;
-            case 11: // Jump to instruction in memory cell BC if the content of register A equals the content of register 0.
-                message = "Jump to instruction in memory cell " + strBC + " if the content of register " + strA + " equals the content of register 0.";
-                instruction = () => {
-                    if (this._registers[operandA] === this._registers[0])
-                        this._programCounter = operandBC - 2;
-                };
-                break;
-            case 12: // Halt execution.
-                this.onInfo("Halt execution.");
-                this.pause();
-                return;
-            default: // Opcode not found. Halted.
-                this.onError("Opcode not found. Halted.");
-                this.pause();
-                return;
-        }
-        this.onInfo(message);
-        let canceled = false;
-        if (wait)
-            canceled = !await this.waitProgress();
-        if (!canceled) {
-            instruction();
-            this.setProgramCounter(this._programCounter + 2);
-        }
-    }
-}
-exports.default = BrookshearMachine;
-
-
-/***/ }),
-
-/***/ "./cell.tsx":
-/*!******************!*\
-  !*** ./cell.tsx ***!
-  \******************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class Cell extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._input = react_1.default.createRef();
-        this.state = {
-            text: "00",
-            focused: false
-        };
-    }
-    static formatText(text) {
-        return text.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
-    }
-    render() {
-        const style = {
-            width: "2ch",
-            fontFamily: "Lucida Console",
-            fontSize: "medium",
-            outline: "none",
-            textAlign: "center",
-            background: "none",
-            color: palette_1.default.default,
-            borderStyle: "solid",
-            borderWidth: "2px",
-            borderColor: palette_1.default.passive,
-            borderRadius: "4px",
-            ":focus": {
-                borderColor: palette_1.default.focus
-            }
-        };
-        return (react_1.default.createElement(react_1.default.Fragment, null,
-            react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) })));
-    }
-    handleChange(input) {
-        this.setText(input.value, input.selectionEnd);
-    }
-    setValue(value) {
-        this.setText(value.toString(16).padStart(2, "0"), this._input.current.selectionEnd);
-    }
-    setText(text, cursor) {
-        const formattedText = Cell.formatText(text);
-        this.setState({ text: formattedText }, () => this._input.current.selectionStart = this._input.current.selectionEnd = cursor);
-        this.props.onChange(parseInt(formattedText, 16));
-    }
-    focus() {
-        if (!this.state.focused) {
-            this._input.current.selectionStart = this._input.current.selectionEnd = 0;
-            this._input.current.focus();
-        }
-    }
-}
-exports.default = radium_1.default(Cell);
-
-
-/***/ }),
-
-/***/ "./cpu.tsx":
-/*!*****************!*\
-  !*** ./cpu.tsx ***!
-  \*****************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const cpuCell_1 = __importDefault(__webpack_require__(/*! ./cpuCell */ "./cpuCell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class CPU extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._pc = react_1.default.createRef();
-        this._registers = [];
-        for (let i = 0; i < this.props.registers; ++i)
-            this._registers.push(react_1.default.createRef());
-    }
-    render() {
-        const style = {
-            backgroundColor: palette_1.default.cpuBackground,
-            color: palette_1.default.passive,
-            paddingTop: "16px",
-            minWidth: "200px",
-            display: "flex",
-            flexDirection: "column",
-            overflowX: "hidden",
-            overflowY: "auto"
-        };
-        const hrStyle = {
-            borderColor: palette_1.default.passive,
-            width: "100%"
-        };
-        const registers = [];
-        for (let i = 0; i < this.props.registers; ++i)
-            registers.push(react_1.default.createElement(cpuCell_1.default, { key: i, ref: this._registers[i], register: i, label: "Register " + i.toString(16).toUpperCase(), onChange: this.props.onRegisterChange }));
-        return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement(cpuCell_1.default, { ref: this._pc, register: -1, label: "Program Counter", onChange: (register, value) => this.props.onProgramCounterChange(value) }),
-            react_1.default.createElement("hr", { style: hrStyle }),
-            registers));
-    }
-    setProgramCounter(value) {
-        this._pc.current.setValue(value);
-    }
-    setRegister(register, value) {
-        this._registers[register].current.setValue(value);
-    }
-}
-exports.default = CPU;
-
-
-/***/ }),
-
-/***/ "./cpuCell.tsx":
-/*!*********************!*\
-  !*** ./cpuCell.tsx ***!
-  \*********************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class CPUCell extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._cell = react_1.default.createRef();
-        this.state = { flashing: false };
-    }
-    render() {
-        const style = {
-            display: "flex",
-            justifyContent: "space-between",
-            fontFamily: "arial",
-            alignItems: "center",
-            padding: "4px 16px",
-            animationDuration: "1s",
-            animationIterationCount: "1",
-            animationTimingFunction: "ease-in",
-            animationName: this.state.flashing ? radium_1.default.keyframes({
-                "from": { background: palette_1.default.flash },
-                "to": { background: "" }
-            }) : "none",
-            ":hover": {
-                background: palette_1.default.highlightBackground
-            },
-            ":focus": {
-                color: palette_1.default.focus
-            }
-        };
-        return (react_1.default.createElement("div", { style: style, onClick: () => this._cell.current.focus() },
-            react_1.default.createElement("label", null, this.props.label),
-            react_1.default.createElement(cell_1.default, { ref: this._cell, onChange: (value) => this.props.onChange(this.props.register, value) })));
-    }
-    setValue(value) {
-        this._cell.current.setValue(value);
-        if (!this.state.flashing && !this._cell.current.state.focused)
-            this.setState({ flashing: true }, () => setTimeout(() => this.setState({ flashing: false }), 1000));
-    }
-}
-exports.default = radium_1.default(CPUCell);
-
-
-/***/ }),
-
-/***/ "./editor.tsx":
-/*!********************!*\
-  !*** ./editor.tsx ***!
-  \********************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
-__webpack_require__(/*! ace-builds/src-noconflict/theme-cobalt */ "./node_modules/ace-builds/src-noconflict/theme-cobalt.js");
-__webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
-const assemblyBrookshearMode_1 = __importDefault(__webpack_require__(/*! ./assemblyBrookshearMode */ "./assemblyBrookshearMode.js"));
-const brookshearAssemblerToken_1 = __importDefault(__webpack_require__(/*! ./brookshearAssemblerToken */ "./brookshearAssemblerToken.ts"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class Editor extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._editor = react_1.default.createRef();
-        this._console = react_1.default.createRef();
-        this.state = {
-            consoleVisible: false,
-            notifications: 0
-        };
-    }
-    componentDidMount() {
-        this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
-        this._console.current.editor.getSession().setOption("useWorker", false);
-    }
-    render() {
-        const style = {
-            display: "flex",
-            flexDirection: "column",
-            flexGrow: 1,
-            alignItems: "stretch",
-            overflow: "auto"
-        };
-        const editorStyle = {
-            flexGrow: 4,
-            position: "relative"
-        };
-        const consoleStyle = {
-            flexGrow: this.state.consoleVisible ? 1 : 0,
-            transition: "flex-grow 0.3s"
-        };
-        const fillStyle = {
-            width: "100%",
-            height: "100%"
-        };
-        const consoleButtonStyle = {
-            position: "absolute",
-            bottom: 0,
-            right: "20px",
-            color: palette_1.default.default,
-            background: "black",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            borderTopLeftRadius: "25%",
-            borderTopRightRadius: "25%",
-            ":hover": {
-                color: palette_1.default.focus
-            }
-        };
-        const notificationsBubbleStyle = {
-            position: "absolute",
-            background: palette_1.default.focus,
-            color: palette_1.default.default,
-            borderRadius: "50%",
-            left: "-8px",
-            top: "-8px",
-            width: "16px",
-            height: "16px",
-            visibility: this.state.notifications > 0 ? "visible" : "hidden"
-        };
-        const notificationsTextStyle = {
-            display: "inline-block",
-            verticalAlign: "middle",
-            fontSize: "small",
-            fontFamily: "arial",
-            textAlign: "center"
-        };
-        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
-        return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement("div", { key: "editor", style: editorStyle },
-                react_1.default.createElement(radium_1.default.Style, { scopeSelector: ".ace_gutter-cell.arrow", rules: {
-                        background: palette_1.default.focus,
-                        color: palette_1.default.default,
-                        clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
-                    } }),
-                react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true, onChange: this.props.onChange }),
-                react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
-                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
-                    react_1.default.createElement("div", { style: notificationsBubbleStyle },
-                        react_1.default.createElement("span", { style: notificationsTextStyle }, this.state.notifications)))),
-            react_1.default.createElement("div", { key: "console", style: consoleStyle },
-                react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
-    }
-    getAllTokens() {
-        const rows = this._editor.current.editor.getSession().getLength();
-        let tokens = [];
-        for (let i = 0; i < rows; ++i) {
-            const aceTokens = this._editor.current.editor.getSession().getTokens(i);
-            let rowTokens = [];
-            let start = 0;
-            for (let j = 0; j < aceTokens.length; ++j) {
-                var types = aceTokens[j].type.split('.');
-                var value = aceTokens[j].value;
-                rowTokens.push(new brookshearAssemblerToken_1.default(types, value.toString(), start, j));
-                start += value.length;
-            }
-            tokens.push(rowTokens);
-        }
-        return tokens;
-    }
-    toggleConsoleVisibility() {
-        this.setState({
-            consoleVisible: !this.state.consoleVisible,
-            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
-        });
-        // resize on callback doesn't fix, resizing issue
-        setTimeout(() => {
-            this._console.current.editor.resize();
-            this._editor.current.editor.resize();
-        }, 300);
-    }
-    clearEditor() {
-        this._editor.current.editor.getSession().setValue("");
-    }
-    clearConsole() {
-        this._console.current.editor.getSession().setValue("");
-        this.setState(() => ({ notifications: 0 }));
-    }
-    appendWarning(row, column, message) {
-        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
-    }
-    appendError(row, column, message) {
-        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
-    }
-    appendMessage(message, annotation = "") {
-        let session = this._console.current.editor.getSession();
-        const length = session.getLength();
-        session.insert({ row: length, column: 0 }, message + "\n");
-        if (annotation !== "") {
-            let annotations = session.getAnnotations();
-            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
-            session.setAnnotations(annotations);
-        }
-        if (!this.state.consoleVisible)
-            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
-    }
-    setArrowPosition(row) {
-        this.disappearArrow();
-        this._editor.current.editor.getSession().setBreakpoint(row, "arrow");
-    }
-    disappearArrow() {
-        this._editor.current.editor.getSession().clearBreakpoints();
-    }
-    setText(text) {
-        this._editor.current.editor.setValue(text, -1);
-    }
-}
-exports.default = radium_1.default(Editor);
-
-
-/***/ }),
-
-/***/ "./infoBar.tsx":
-/*!*********************!*\
-  !*** ./infoBar.tsx ***!
-  \*********************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class infoBar extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            progress: 0,
-            message: "",
-            messageColor: "",
-            bold: false,
-            icon: ""
-        };
-    }
-    render() {
-        const style = {
-            position: "relative",
-            flexGrow: 1,
-            background: "none",
-        };
-        const progressStyle = {
-            position: "absolute",
-            height: "100%",
-            width: "100%",
-            clipPath: "inset(0 " + (100 - this.state.progress) + "% 0 0)",
-            background: palette_1.default.progress,
-        };
-        const messageStyle = {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            color: this.state.messageColor
-        };
-        const textStyle = {
-            textAlign: "center",
-            fontFamily: "arial",
-            fontWeight: this.state.bold ? "bold" : "normal"
-        };
-        return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement("div", { key: "progress", style: progressStyle }),
-            react_1.default.createElement("div", { key: "message", style: messageStyle },
-                react_1.default.createElement("i", { className: "material-icons" }, this.state.icon),
-                react_1.default.createElement("span", { style: textStyle }, this.state.message))));
-    }
-    setProgress(progress) {
-        this.setState({ progress: progress });
-    }
-    setInfo(message, bold = false) {
-        this.setState({
-            message: message,
-            messageColor: palette_1.default.passive,
-            bold: bold,
-            icon: "info_outline"
-        });
-    }
-    setError(message, bold = false) {
-        this.setState({
-            message: message,
-            messageColor: palette_1.default.error,
-            bold: bold,
-            icon: "error_outline"
-        });
-    }
-    setSuccess(message, bold = false) {
-        this.setState({
-            message: message,
-            messageColor: palette_1.default.success,
-            bold: bold,
-            icon: "check"
-        });
-    }
-}
-exports.default = infoBar;
-
-
-/***/ }),
-
-/***/ "./memory.tsx":
-/*!********************!*\
-  !*** ./memory.tsx ***!
-  \********************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const memoryCellPair_1 = __importDefault(__webpack_require__(/*! ./memoryCellPair */ "./memoryCellPair.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class Memory extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._cellPairs = [];
-        for (let i = 0; i < this.props.memory; i += 2)
-            this._cellPairs.push(react_1.default.createRef());
-    }
-    render() {
-        const style = {
-            backgroundColor: palette_1.default.memoryBackground,
-            color: palette_1.default.passive,
-            flexGrow: 1,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
-            gridTemplateRows: "repeat(auto-fill, minmax(30px, 1fr))",
-            padding: "16px",
-            overflow: "auto"
-        };
-        const cellPairs = [];
-        for (let i = 0; i < this.props.memory; i += 2)
-            cellPairs.push(react_1.default.createElement(memoryCellPair_1.default, { key: i, ref: this._cellPairs[Math.trunc(i / 2)], address: i, onChange: this.props.onChange }));
-        return (react_1.default.createElement("div", { style: style }, cellPairs));
-    }
-    setCell(address, value) {
-        const cellPair = this._cellPairs[Math.trunc(address / 2)].current;
-        if (address % 2 === 0)
-            cellPair.setFirstCell(value);
-        else
-            cellPair.setSecondCell(value);
-    }
-}
-exports.default = Memory;
-
-
-/***/ }),
-
-/***/ "./memoryCellPair.tsx":
-/*!****************************!*\
-  !*** ./memoryCellPair.tsx ***!
-  \****************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./cell.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-class MemoryCellPair extends react_1.default.Component {
-    constructor(props) {
-        super(props);
-        this._firstCell = react_1.default.createRef();
-        this._secondCell = react_1.default.createRef();
-        this.state = {
-            firstFlashing: false,
-            secondFlashing: false
-        };
-    }
-    static toAddressLabel(address) {
-        return address.toString(16).toUpperCase().padStart(2, "0");
-    }
-    render() {
-        const flashKeyframes = radium_1.default.keyframes({
-            "from": { background: palette_1.default.flash },
-            "to": { background: "" }
-        });
-        const style = {
-            fontFamily: "Lucida Console",
-            fontSize: "small",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            justifyContent: "center",
-            alignItems: "center",
-            margin: "auto"
-        };
-        const firstCellStyle = {
-            padding: "4px",
-            display: "inline-block",
-            float: "right",
-            animationDuration: "1s",
-            animationIterationCount: "1",
-            animationTimingFunction: "ease-in",
-            animationName: this.state.firstFlashing ? flashKeyframes : "none",
-            ":focus": {
-                color: palette_1.default.focus
-            },
-            ":hover": {
-                background: palette_1.default.highlightBackground
-            }
-        };
-        const secondCellStyle = {
-            padding: "4px",
-            display: "inline-block",
-            float: "left",
-            animationDuration: "1s",
-            animationIterationCount: "1",
-            animationTimingFunction: "ease-in",
-            animationName: this.state.secondFlashing ? flashKeyframes : "none",
-            ":focus": {
-                color: palette_1.default.focus
-            },
-            ":hover": {
-                background: palette_1.default.highlightBackground
-            }
-        };
-        const labelStyle = {
-            margin: "auto",
-            padding: "4px"
-        };
-        const firstAddress = this.props.address;
-        const secondAddress = this.props.address + 1;
-        const firstLabel = MemoryCellPair.toAddressLabel(firstAddress);
-        const secondLabel = MemoryCellPair.toAddressLabel(secondAddress);
-        return (react_1.default.createElement("div", { style: style },
-            react_1.default.createElement("div", { key: 0, style: firstCellStyle, onClick: () => this._firstCell.current.focus() },
-                react_1.default.createElement("label", { style: labelStyle }, firstLabel),
-                react_1.default.createElement(cell_1.default, { ref: this._firstCell, onChange: (value) => this.props.onChange(firstAddress, value) })),
-            react_1.default.createElement("div", { key: 1, style: secondCellStyle, onClick: () => this._secondCell.current.focus() },
-                react_1.default.createElement(cell_1.default, { ref: this._secondCell, onChange: (value) => this.props.onChange(secondAddress, value) }),
-                react_1.default.createElement("label", { style: labelStyle }, secondLabel))));
-    }
-    setFirstCell(value) {
-        this._firstCell.current.setValue(value);
-        if (!this.state.firstFlashing && !this._firstCell.current.state.focused)
-            this.setState({ firstFlashing: true }, () => setTimeout(() => this.setState({ firstFlashing: false }), 1000));
-    }
-    setSecondCell(value) {
-        this._secondCell.current.setValue(value);
-        if (!this.state.secondFlashing && !this._secondCell.current.state.focused)
-            this.setState({ secondFlashing: true }, () => setTimeout(() => this.setState({ secondFlashing: false }), 1000));
-    }
-}
-exports.default = radium_1.default(MemoryCellPair);
+react_dom_1.default.render(react_1.default.createElement(root_1.default, null), document.getElementById('root'));
 
 
 /***/ }),
@@ -65546,39 +64285,534 @@ module.exports = function(module) {
 
 /***/ }),
 
-/***/ "./palette.ts":
-/*!********************!*\
-  !*** ./palette.ts ***!
-  \********************/
+/***/ "./source/assemblyBrookshearMode.js":
+/*!******************************************!*\
+  !*** ./source/assemblyBrookshearMode.js ***!
+  \******************************************/
+/*! exports provided: AssemblyBrookshearHighlightRules, default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AssemblyBrookshearHighlightRules", function() { return AssemblyBrookshearHighlightRules; });
+class AssemblyBrookshearHighlightRules extends window.ace.acequire("ace/mode/text_highlight_rules").TextHighlightRules { 
+    constructor() {
+        super();
+
+        this.$rules = {
+            start:
+                [
+                    {
+                        token: 'keyword.instruction',
+                        regex: '\\b(?:ldr|ldrc|str|mov|add|fadd|or|and|xor|ror|jmp|hlt)\\b',
+                        caseInsensitive: true
+                    },
+                    {
+                        token: 'constant.operand.decimal',
+                        regex: '\\b[0-9]+\\b'
+                    },
+                    {
+                        token: 'constant.operand.hexadecimal',
+                        regex: '\\b0x[A-F0-9]+\\b',
+                        caseInsensitive: true
+                    },
+                    {
+                        token: 'constant.operand.hexadecimal',
+                        regex: '\\b[A-F0-9]+h\\b',
+                        caseInsensitive: true
+                    },
+                    {
+                        token: 'entity.label',
+                        regex: '^[\\w.]+?:'
+                    },
+                    {
+                        token: 'entity.label',
+                        regex: '^[\\w.]+?\\b'
+                    },
+                    {
+                        token: 'comment.comment',
+                        regex: ';.*$'
+                    },
+                    {
+                        token: 'punctuation.comma',
+                        regex: ','
+                    },
+                    {
+                        token: 'text.whitespace',
+                        regex: '\\s+'
+                    }
+                ]
+        };
+    }
+}
+
+class AssemblyBrookshearMode extends window.ace.acequire("ace/mode/text").Mode {
+    constructor() {
+        super();
+        this.HighlightRules = AssemblyBrookshearHighlightRules;
+    }
+}
+
+/* harmony default export */ __webpack_exports__["default"] = (AssemblyBrookshearMode);
+
+/***/ }),
+
+/***/ "./source/brookshearAssembler.ts":
+/*!***************************************!*\
+  !*** ./source/brookshearAssembler.ts ***!
+  \***************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Palette = {
-    default: "white",
-    passive: "#26aab3",
-    focus: "#d31ac4",
-    error: "red",
-    success: "green",
-    flash: "#82801B",
-    highlightBackground: "#2e0e40",
-    toolBarBackground: "#000a1b",
-    toolBarHighlightBackground: "#132044",
-    cpuBackground: "#030e20",
-    memoryBackground: "#08162e",
-    progress: "#032a3a"
-};
-exports.default = Palette;
+class BrookshearAssembler {
+    constructor() {
+        this.onWarning = (row, column, message) => { console.log("warning(" + row + "," + column + "): " + message); };
+        this.onError = (row, column, message) => { console.log("error(" + row + "," + column + "): " + message); };
+        this._labels = new Map();
+        this._machineCode = new Uint8Array();
+        this._machineCodeIndex = 0;
+        this._rowMap = new Map();
+    }
+    warning(row, column, message) {
+        this.onWarning(row, column, message);
+    }
+    error(row, column, message) {
+        this.onError(row, column, message);
+    }
+    getMachineCode() {
+        return new Uint8Array(this._machineCode);
+    }
+    getRowMap() {
+        return new Map(this._rowMap);
+    }
+    assemblyLines(lines) {
+        let filteredLines = [];
+        for (let line of lines)
+            filteredLines.push(BrookshearAssembler.removeTypes(line, 1, ["whitespace", "comment"]));
+        if (!this.controlLines(filteredLines))
+            return false;
+        for (let i = 0; i < filteredLines.length; ++i)
+            filteredLines[i] = BrookshearAssembler.removeTypes(filteredLines[i], 1, ["label"]);
+        for (let i = 0; i < filteredLines.length; ++i)
+            if (!this.assemblyInstructionLine(i + 1, filteredLines[i]))
+                return false;
+        const haltInstruction = parseInt("0xC0");
+        if (this._machineCode.length > 0 && this._machineCode[this._machineCode.length - 2] !== haltInstruction)
+            this.warning(lines.length, 0, "No halt instruction at end of program");
+        return true;
+    }
+    increaseCodeSize(codeSize, row, column) {
+        this._rowMap.set(codeSize, row);
+        codeSize += 2;
+        if (codeSize > 256) {
+            this.error(row, column, "Program size exceeds memory size");
+            return -1;
+        }
+        return codeSize;
+    }
+    controlLines(lines) {
+        let codeSize = 0;
+        for (let i = 0; i < lines.length; ++i)
+            if (lines[i].length > 0) {
+                const firstToken = lines[i][0];
+                if (firstToken.getType(1) === "instruction") {
+                    codeSize = this.increaseCodeSize(codeSize, i, firstToken.start);
+                    if (codeSize < 0)
+                        return false;
+                }
+                else if (firstToken.getType(1) === "label") {
+                    if (firstToken.value[firstToken.value.length - 1] === ':')
+                        firstToken.value = firstToken.value.slice(0, -1);
+                    else if (lines[i].length === 1)
+                        this.warning(i + 1, firstToken.start + firstToken.value.length, "label alone on a line without a colon might be in error");
+                    if (this._labels.has(firstToken.value)) {
+                        this.error(i + 1, firstToken.start, "label '" + firstToken.value + "' redefined");
+                        return false;
+                    }
+                    if (lines[i].length > 1) {
+                        const secondToken = lines[i][1];
+                        if (secondToken.getType(1) === "instruction") {
+                            codeSize = this.increaseCodeSize(codeSize, i, secondToken.start);
+                            if (codeSize < 0)
+                                return false;
+                        }
+                        else {
+                            this.error(i + 1, secondToken.start, "instruction expected, but found " + secondToken.getType(1) + ": " + secondToken.value);
+                            return false;
+                        }
+                    }
+                    this._labels.set(firstToken.value, codeSize);
+                }
+                else {
+                    this.error(i + 1, firstToken.start, "label or instruction expected at start of line, but found " + firstToken.getType(1) + ": " + firstToken.value);
+                    return false;
+                }
+            }
+        this._machineCode = new Uint8Array(codeSize);
+        this._machineCodeIndex = 0;
+        return true;
+    }
+    clear() {
+        this._labels.clear();
+        this._rowMap.clear();
+        this._machineCode = new Uint8Array();
+        this._machineCodeIndex = 0;
+    }
+    static removeTypes(tokens, typeIndex, types) {
+        let filteredTokens = [];
+        for (let token of tokens) {
+            let push = true;
+            for (let i = 0; push && i < types.length; ++i)
+                if (token.getType(typeIndex) === types[i])
+                    push = false;
+            if (push)
+                filteredTokens.push(token);
+        }
+        return filteredTokens;
+    }
+    assemblyInstructionLine(row, line) {
+        if (line.length === 0)
+            return true;
+        if (!this.evaluateUnknowns(row, line))
+            return false;
+        const instruction = line[0].value.toLowerCase();
+        let opcode = 0;
+        let operandDrafts;
+        switch (instruction) {
+            case "ldr":
+                opcode = 1;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
+                break;
+            case "ldrc":
+                opcode = 2;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
+                break;
+            case "str":
+                opcode = 3;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
+                break;
+            case "mov":
+                opcode = 4;
+                operandDrafts = [{ offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "add":
+                opcode = 5;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "fadd":
+                opcode = 6;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "or":
+                opcode = 7;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "and":
+                opcode = 8;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "xor":
+                opcode = 9;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "ror":
+                opcode = 10;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 3, size: 1 }];
+                break;
+            case "jmp":
+                opcode = 11;
+                operandDrafts = [{ offset: 1, size: 1 }, { offset: 2, size: 2 }];
+                break;
+            case "hlt":
+                opcode = 12;
+                operandDrafts = [];
+                break;
+            default:
+                this.error(row, line[0].start, "Could not resolve instruction: " + instruction);
+                return false;
+        }
+        if (operandDrafts.length > 0 && (line.length - 1) !== ((2 * operandDrafts.length) - 1)) {
+            this.error(row, line[0].start + line[0].value.length, "invalid combination of opcode and operands");
+            return false;
+        }
+        let operandTokens = [];
+        let i = 1;
+        while (i < line.length) {
+            if (line[i].getType(1) === "operand") {
+                operandTokens.push(line[i]);
+            }
+            else {
+                this.error(row, line[i].start, "operand expected, but found " + line[i].getType(1) + ": " + line[i].value);
+                return false;
+            }
+            ++i;
+            if (i < line.length) {
+                if (line[i].getType(1) !== "comma") {
+                    this.error(row, line[i].start, "comma expected after operand, but found " + line[i].getType(1) + ": " + line[i].value);
+                    return false;
+                }
+                ++i;
+            }
+        }
+        let halfBytes = [opcode, 0, 0, 0];
+        for (let i = 0; i < operandTokens.length; ++i) {
+            const limit = 16 ** operandDrafts[i].size;
+            let value = parseInt(operandTokens[i].value);
+            if (value >= limit) {
+                this.warning(row, operandTokens[i].start, "operand value exceeds bounds");
+                value = value % limit;
+            }
+            for (let j = 0; j < operandDrafts[i].size; ++j)
+                halfBytes[operandDrafts[i].offset + j] = (value >>> ((operandDrafts[i].size - 1 - j) * 4)) & 15;
+        }
+        this._machineCode[this._machineCodeIndex++] = (halfBytes[0] << 4) + halfBytes[1];
+        this._machineCode[this._machineCodeIndex++] = (halfBytes[2] << 4) + halfBytes[3];
+        return true;
+    }
+    evaluateUnknowns(row, tokens) {
+        for (let token of tokens) {
+            if (token.getType(1) === "") {
+                if (!this._labels.has(token.value)) {
+                    this.error(row, token.start, "symbol '" + token.value + "' undefined");
+                    return false;
+                }
+                token.setTypes(["constant", "operand", "decimal"]);
+                token.value = this._labels.get(token.value).toString();
+            }
+        }
+        return true;
+    }
+}
+exports.default = BrookshearAssembler;
 
 
 /***/ }),
 
-/***/ "./slider.tsx":
-/*!********************!*\
-  !*** ./slider.tsx ***!
-  \********************/
+/***/ "./source/brookshearAssemblerToken.ts":
+/*!********************************************!*\
+  !*** ./source/brookshearAssemblerToken.ts ***!
+  \********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class BrookshearAssemblerToken {
+    constructor(types, value, start, index) {
+        this._types = types;
+        this.value = value;
+        this.start = start;
+        this.index = index;
+    }
+    getType(index) {
+        if (index >= this._types.length)
+            return "";
+        return this._types[index];
+    }
+    setTypes(types) {
+        this._types = types;
+    }
+}
+exports.default = BrookshearAssemblerToken;
+
+
+/***/ }),
+
+/***/ "./source/brookshearMachine.ts":
+/*!*************************************!*\
+  !*** ./source/brookshearMachine.ts ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class BrookshearMachine {
+    constructor() {
+        this.onPause = () => { };
+        this.onProgramCounterChange = (pc) => { };
+        this.onRegisterChange = (register, value) => { };
+        this.onMemoryChange = (address, value) => { };
+        this.onProgressChange = (progress) => { };
+        this.onInfo = (message) => { };
+        this.onError = (message) => { };
+        this._programCounter = 0;
+        this._registers = new Uint8Array(16);
+        this._memory = new Uint8Array(256);
+        this._running = false;
+        this._stepTime = 2500;
+        this._progress = 0;
+    }
+    getProgramCounter() {
+        return this._programCounter;
+    }
+    resetCPU() {
+        this.setProgramCounter(0);
+        for (let i = 0; i < this._registers.length; ++i)
+            this.setRegister(i, 0);
+    }
+    resetMemory() {
+        for (let i = 0; i < this._memory.length; ++i)
+            this.setMemoryCell(i, 0);
+    }
+    setStepTime(ms) {
+        this._stepTime = ms;
+    }
+    setProgramCounter(pc) {
+        this.setProgress(0);
+        if (pc === this._programCounter)
+            return;
+        this._programCounter = pc;
+        this.onProgramCounterChange(pc);
+    }
+    setRegister(register, value) {
+        if (this._registers[register] === value)
+            return;
+        this._registers[register] = value;
+        this.onRegisterChange(register, value);
+    }
+    setMemoryCell(address, value) {
+        if (this._memory[address] === value)
+            return;
+        this._memory[address] = value;
+        this.onMemoryChange(address, value);
+    }
+    setMemory(values, from = 0) {
+        const to = Math.min(this._memory.length, values.length);
+        for (let i = 0; i < to; ++i)
+            this.setMemoryCell(from + i, values[i]);
+    }
+    setProgress(progress) {
+        this._progress = Math.min(progress, 100);
+        this.onProgressChange(this._progress);
+    }
+    async run() {
+        if (this._running)
+            return;
+        this._running = true;
+        do {
+            await this.runStep(true);
+        } while (this._running);
+    }
+    pause() {
+        this._running = false;
+        this.onPause();
+    }
+    stop() {
+        this.pause();
+        this.setProgress(0);
+    }
+    async waitProgress() {
+        let startTime = new Date().getTime();
+        while (this._running) {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            const elapsedTime = new Date().getTime() - startTime;
+            startTime += elapsedTime;
+            this.setProgress(this._progress + (elapsedTime / this._stepTime * 100));
+            if (this._progress >= 100)
+                return true;
+        }
+        return false;
+    }
+    stepOver() {
+        if (this._running)
+            this._progress = 100;
+        else
+            this.runStep(false);
+    }
+    async runStep(wait) {
+        const opcode = this._memory[this._programCounter] >>> 4;
+        const operandA = this._memory[this._programCounter] & 15;
+        const operandBC = this._memory[this._programCounter + 1];
+        const operandB = operandBC >>> 4;
+        const operandC = operandBC & 15;
+        const strA = operandA.toString(16).toUpperCase();
+        const strBC = operandBC.toString(16).padStart(2, "0").toUpperCase();
+        const strB = operandB.toString(16).toUpperCase();
+        const strC = operandC.toString(16).toUpperCase();
+        let message = "";
+        let instruction = () => { };
+        switch (opcode) {
+            case 1: // Copy the content of memory cell BC to register A.
+                message = "Copy the content of memory cell " + strBC + " to register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._memory[operandBC]); };
+                break;
+            case 2: // Copy the bit-string BC to register A.
+                message = "Copy the bit-string " + strBC + " to register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, operandBC); };
+                break;
+            case 3: // Copy the content of register A to memory cell BC.
+                message = "Copy the content of register " + strA + " to memory cell " + strBC + ".";
+                instruction = () => { this.setMemoryCell(operandBC, this._registers[operandA]); };
+                break;
+            case 4: // Copy the content of register B to register C.
+                message = "Copy the content of register " + strB + " to register " + strC + ".";
+                instruction = () => { this.setRegister(operandC, this._registers[operandB]); };
+                break;
+            case 5: // Add the content of register B and register C, and put the result in register A. Data is interpreted as integers in two's-complement notation.
+                message = "Add the content of register " + strB + " and register " + strC + " as integers, and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
+                break;
+            case 6: // Add the content of register B and register C, and put the result in register A. Data is interpreted as floats in floating point notation.
+                message = "Add the content of register " + strB + " and register " + strC + " as floats, and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
+                break;
+            case 7: // Bitwise OR the content of register B and C, and put the result in register A.
+                message = "Bitwise OR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] | this._registers[operandC]); };
+                break;
+            case 8: // Bitwise AND the content of register B and C, and put the result in register A.
+                message = "Bitwise AND the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] & this._registers[operandC]); };
+                break;
+            case 9: // Bitwise XOR the content of register B and C, and put the result in register A.
+                message = "Bitwise XOR the content of register " + strB + " and " + strC + ", and put the result in register " + strA + ".";
+                instruction = () => { this.setRegister(operandA, this._registers[operandB] ^ this._registers[operandC]); };
+                break;
+            case 10: // Rotate the content of register A cyclically right C steps.
+                message = "Rotate the content of register " + strA + " cyclically right " + strC + " steps.";
+                instruction = () => { this.setRegister(operandA, (this._registers[operandA] >>> this._registers[operandC]) | (this._registers[operandA] << (8 - this._registers[operandC]))); };
+                break;
+            case 11: // Jump to instruction in memory cell BC if the content of register A equals the content of register 0.
+                message = "Jump to instruction in memory cell " + strBC + " if the content of register " + strA + " equals the content of register 0.";
+                instruction = () => {
+                    if (this._registers[operandA] === this._registers[0])
+                        this._programCounter = operandBC - 2;
+                };
+                break;
+            case 12: // Halt execution.
+                this.onInfo("Halt execution.");
+                this.pause();
+                return;
+            default: // Opcode not found. Halted.
+                this.onError("Opcode not found. Halted.");
+                this.pause();
+                return;
+        }
+        this.onInfo(message);
+        let canceled = false;
+        if (wait)
+            canceled = !await this.waitProgress();
+        if (!canceled) {
+            instruction();
+            this.setProgramCounter(this._programCounter + 2);
+        }
+    }
+}
+exports.default = BrookshearMachine;
+
+
+/***/ }),
+
+/***/ "./source/components/cell.tsx":
+/*!************************************!*\
+  !*** ./source/components/cell.tsx ***!
+  \************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -65590,7 +64824,763 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class Cell extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._input = react_1.default.createRef();
+        this.state = {
+            text: "00",
+            focused: false
+        };
+    }
+    static formatText(text) {
+        return text.replace(/[^0-9a-f]/gi, "").toUpperCase().padEnd(2, "0").slice(0, 2);
+    }
+    render() {
+        const style = {
+            width: "2ch",
+            fontFamily: "Lucida Console",
+            fontSize: "medium",
+            outline: "none",
+            textAlign: "center",
+            background: "none",
+            color: palette_1.default.default,
+            borderStyle: "solid",
+            borderWidth: "2px",
+            borderColor: palette_1.default.passive,
+            borderRadius: "4px",
+            ":focus": {
+                borderColor: palette_1.default.focus
+            }
+        };
+        return (react_1.default.createElement(react_1.default.Fragment, null,
+            react_1.default.createElement("input", { ref: this._input, style: style, value: this.state.text, type: "text", spellCheck: "false", onChange: (event) => this.handleChange(event.target), onFocus: () => this.setState({ focused: true }), onBlur: () => this.setState({ focused: false }) })));
+    }
+    handleChange(input) {
+        this.setText(input.value, input.selectionEnd);
+    }
+    setValue(value) {
+        this.setText(value.toString(16).padStart(2, "0"), this._input.current.selectionEnd);
+    }
+    setText(text, cursor) {
+        const formattedText = Cell.formatText(text);
+        this.setState({ text: formattedText }, () => this._input.current.selectionStart = this._input.current.selectionEnd = cursor);
+        this.props.onChange(parseInt(formattedText, 16));
+    }
+    focus() {
+        if (!this.state.focused) {
+            this._input.current.selectionStart = this._input.current.selectionEnd = 0;
+            this._input.current.focus();
+        }
+    }
+}
+exports.default = radium_1.default(Cell);
+
+
+/***/ }),
+
+/***/ "./source/components/cpu.tsx":
+/*!***********************************!*\
+  !*** ./source/components/cpu.tsx ***!
+  \***********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const cpuCell_1 = __importDefault(__webpack_require__(/*! ./cpuCell */ "./source/components/cpuCell.tsx"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class CPU extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._pc = react_1.default.createRef();
+        this._registers = [];
+        for (let i = 0; i < this.props.registers; ++i)
+            this._registers.push(react_1.default.createRef());
+    }
+    render() {
+        const style = {
+            backgroundColor: palette_1.default.cpuBackground,
+            color: palette_1.default.passive,
+            paddingTop: "16px",
+            minWidth: "200px",
+            display: "flex",
+            flexDirection: "column",
+            overflowX: "hidden",
+            overflowY: "auto"
+        };
+        const hrStyle = {
+            borderColor: palette_1.default.passive,
+            width: "100%"
+        };
+        const registers = [];
+        for (let i = 0; i < this.props.registers; ++i)
+            registers.push(react_1.default.createElement(cpuCell_1.default, { key: i, ref: this._registers[i], register: i, label: "Register " + i.toString(16).toUpperCase(), onChange: this.props.onRegisterChange }));
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement(cpuCell_1.default, { ref: this._pc, register: -1, label: "Program Counter", onChange: (register, value) => this.props.onProgramCounterChange(value) }),
+            react_1.default.createElement("hr", { style: hrStyle }),
+            registers));
+    }
+    setProgramCounter(value) {
+        this._pc.current.setValue(value);
+    }
+    setRegister(register, value) {
+        this._registers[register].current.setValue(value);
+    }
+}
+exports.default = CPU;
+
+
+/***/ }),
+
+/***/ "./source/components/cpuCell.tsx":
+/*!***************************************!*\
+  !*** ./source/components/cpuCell.tsx ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./source/components/cell.tsx"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class CPUCell extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._cell = react_1.default.createRef();
+        this.state = { flashing: false };
+    }
+    render() {
+        const style = {
+            display: "flex",
+            justifyContent: "space-between",
+            fontFamily: "arial",
+            alignItems: "center",
+            padding: "4px 16px",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.flashing ? radium_1.default.keyframes({
+                "from": { background: palette_1.default.flash },
+                "to": { background: "" }
+            }) : "none",
+            ":hover": {
+                background: palette_1.default.highlightBackground
+            },
+            ":focus": {
+                color: palette_1.default.focus
+            }
+        };
+        return (react_1.default.createElement("div", { style: style, onClick: () => this._cell.current.focus() },
+            react_1.default.createElement("label", null, this.props.label),
+            react_1.default.createElement(cell_1.default, { ref: this._cell, onChange: (value) => this.props.onChange(this.props.register, value) })));
+    }
+    setValue(value) {
+        this._cell.current.setValue(value);
+        if (!this.state.flashing && !this._cell.current.state.focused)
+            this.setState({ flashing: true }, () => setTimeout(() => this.setState({ flashing: false }), 1000));
+    }
+}
+exports.default = radium_1.default(CPUCell);
+
+
+/***/ }),
+
+/***/ "./source/components/editor.tsx":
+/*!**************************************!*\
+  !*** ./source/components/editor.tsx ***!
+  \**************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
+__webpack_require__(/*! ace-builds/src-noconflict/theme-cobalt */ "./node_modules/ace-builds/src-noconflict/theme-cobalt.js");
+__webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
+const assemblyBrookshearMode_1 = __importDefault(__webpack_require__(/*! ../assemblyBrookshearMode */ "./source/assemblyBrookshearMode.js"));
+const brookshearAssemblerToken_1 = __importDefault(__webpack_require__(/*! ../brookshearAssemblerToken */ "./source/brookshearAssemblerToken.ts"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class Editor extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._editor = react_1.default.createRef();
+        this._console = react_1.default.createRef();
+        this.state = {
+            consoleVisible: false,
+            notifications: 0
+        };
+    }
+    componentDidMount() {
+        this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
+        this._console.current.editor.getSession().setOption("useWorker", false);
+    }
+    render() {
+        const style = {
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            alignItems: "stretch",
+            overflow: "auto"
+        };
+        const editorStyle = {
+            flexGrow: 4,
+            position: "relative"
+        };
+        const consoleStyle = {
+            flexGrow: this.state.consoleVisible ? 1 : 0,
+            transition: "flex-grow 0.3s"
+        };
+        const fillStyle = {
+            width: "100%",
+            height: "100%"
+        };
+        const consoleButtonStyle = {
+            position: "absolute",
+            bottom: 0,
+            right: "20px",
+            color: palette_1.default.default,
+            background: "black",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            borderTopLeftRadius: "25%",
+            borderTopRightRadius: "25%",
+            ":hover": {
+                color: palette_1.default.focus
+            }
+        };
+        const notificationsBubbleStyle = {
+            position: "absolute",
+            background: palette_1.default.focus,
+            color: palette_1.default.default,
+            borderRadius: "50%",
+            left: "-8px",
+            top: "-8px",
+            width: "16px",
+            height: "16px",
+            visibility: this.state.notifications > 0 ? "visible" : "hidden"
+        };
+        const notificationsTextStyle = {
+            display: "inline-block",
+            verticalAlign: "middle",
+            fontSize: "small",
+            fontFamily: "arial",
+            textAlign: "center"
+        };
+        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement("div", { key: "editor", style: editorStyle },
+                react_1.default.createElement(radium_1.default.Style, { scopeSelector: ".ace_gutter-cell.arrow", rules: {
+                        background: palette_1.default.focus,
+                        color: palette_1.default.default,
+                        clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
+                    } }),
+                react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true, onChange: this.props.onChange }),
+                react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
+                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
+                    react_1.default.createElement("div", { style: notificationsBubbleStyle },
+                        react_1.default.createElement("span", { style: notificationsTextStyle }, this.state.notifications)))),
+            react_1.default.createElement("div", { key: "console", style: consoleStyle },
+                react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
+    }
+    getAllTokens() {
+        const rows = this._editor.current.editor.getSession().getLength();
+        let tokens = [];
+        for (let i = 0; i < rows; ++i) {
+            const aceTokens = this._editor.current.editor.getSession().getTokens(i);
+            let rowTokens = [];
+            let start = 0;
+            for (let j = 0; j < aceTokens.length; ++j) {
+                var types = aceTokens[j].type.split('.');
+                var value = aceTokens[j].value;
+                rowTokens.push(new brookshearAssemblerToken_1.default(types, value.toString(), start, j));
+                start += value.length;
+            }
+            tokens.push(rowTokens);
+        }
+        return tokens;
+    }
+    toggleConsoleVisibility() {
+        this.setState({
+            consoleVisible: !this.state.consoleVisible,
+            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
+        });
+        // resize on callback doesn't fix, resizing issue
+        setTimeout(() => {
+            this._console.current.editor.resize();
+            this._editor.current.editor.resize();
+        }, 300);
+    }
+    clearEditor() {
+        this._editor.current.editor.getSession().setValue("");
+    }
+    clearConsole() {
+        this._console.current.editor.getSession().setValue("");
+        this.setState(() => ({ notifications: 0 }));
+    }
+    appendWarning(row, column, message) {
+        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
+    }
+    appendError(row, column, message) {
+        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    }
+    appendMessage(message, annotation = "") {
+        let session = this._console.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, message + "\n");
+        if (annotation !== "") {
+            let annotations = session.getAnnotations();
+            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
+            session.setAnnotations(annotations);
+        }
+        if (!this.state.consoleVisible)
+            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    }
+    setArrowPosition(row) {
+        this.disappearArrow();
+        this._editor.current.editor.getSession().setBreakpoint(row, "arrow");
+    }
+    disappearArrow() {
+        this._editor.current.editor.getSession().clearBreakpoints();
+    }
+    setText(text) {
+        this._editor.current.editor.setValue(text, -1);
+    }
+}
+exports.default = radium_1.default(Editor);
+
+
+/***/ }),
+
+/***/ "./source/components/infoBar.tsx":
+/*!***************************************!*\
+  !*** ./source/components/infoBar.tsx ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class infoBar extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            progress: 0,
+            message: "",
+            messageColor: "",
+            bold: false,
+            icon: ""
+        };
+    }
+    render() {
+        const style = {
+            position: "relative",
+            flexGrow: 1,
+            background: "none",
+        };
+        const progressStyle = {
+            position: "absolute",
+            height: "100%",
+            width: "100%",
+            clipPath: "inset(0 " + (100 - this.state.progress) + "% 0 0)",
+            background: palette_1.default.progress,
+        };
+        const messageStyle = {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            color: this.state.messageColor
+        };
+        const textStyle = {
+            textAlign: "center",
+            fontFamily: "arial",
+            fontWeight: this.state.bold ? "bold" : "normal"
+        };
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement("div", { key: "progress", style: progressStyle }),
+            react_1.default.createElement("div", { key: "message", style: messageStyle },
+                react_1.default.createElement("i", { className: "material-icons" }, this.state.icon),
+                react_1.default.createElement("span", { style: textStyle }, this.state.message))));
+    }
+    setProgress(progress) {
+        this.setState({ progress: progress });
+    }
+    setInfo(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.passive,
+            bold: bold,
+            icon: "info_outline"
+        });
+    }
+    setError(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.error,
+            bold: bold,
+            icon: "error_outline"
+        });
+    }
+    setSuccess(message, bold = false) {
+        this.setState({
+            message: message,
+            messageColor: palette_1.default.success,
+            bold: bold,
+            icon: "check"
+        });
+    }
+}
+exports.default = infoBar;
+
+
+/***/ }),
+
+/***/ "./source/components/memory.tsx":
+/*!**************************************!*\
+  !*** ./source/components/memory.tsx ***!
+  \**************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const memoryCellPair_1 = __importDefault(__webpack_require__(/*! ./memoryCellPair */ "./source/components/memoryCellPair.tsx"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class Memory extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._cellPairs = [];
+        for (let i = 0; i < this.props.memory; i += 2)
+            this._cellPairs.push(react_1.default.createRef());
+    }
+    render() {
+        const style = {
+            backgroundColor: palette_1.default.memoryBackground,
+            color: palette_1.default.passive,
+            flexGrow: 1,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
+            gridTemplateRows: "repeat(auto-fill, minmax(30px, 1fr))",
+            padding: "16px",
+            overflow: "auto"
+        };
+        const cellPairs = [];
+        for (let i = 0; i < this.props.memory; i += 2)
+            cellPairs.push(react_1.default.createElement(memoryCellPair_1.default, { key: i, ref: this._cellPairs[Math.trunc(i / 2)], address: i, onChange: this.props.onChange }));
+        return (react_1.default.createElement("div", { style: style }, cellPairs));
+    }
+    setCell(address, value) {
+        const cellPair = this._cellPairs[Math.trunc(address / 2)].current;
+        if (address % 2 === 0)
+            cellPair.setFirstCell(value);
+        else
+            cellPair.setSecondCell(value);
+    }
+}
+exports.default = Memory;
+
+
+/***/ }),
+
+/***/ "./source/components/memoryCellPair.tsx":
+/*!**********************************************!*\
+  !*** ./source/components/memoryCellPair.tsx ***!
+  \**********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const cell_1 = __importDefault(__webpack_require__(/*! ./cell */ "./source/components/cell.tsx"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+class MemoryCellPair extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._firstCell = react_1.default.createRef();
+        this._secondCell = react_1.default.createRef();
+        this.state = {
+            firstFlashing: false,
+            secondFlashing: false
+        };
+    }
+    static toAddressLabel(address) {
+        return address.toString(16).toUpperCase().padStart(2, "0");
+    }
+    render() {
+        const flashKeyframes = radium_1.default.keyframes({
+            "from": { background: palette_1.default.flash },
+            "to": { background: "" }
+        });
+        const style = {
+            fontFamily: "Lucida Console",
+            fontSize: "small",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            justifyContent: "center",
+            alignItems: "center",
+            margin: "auto"
+        };
+        const firstCellStyle = {
+            padding: "4px",
+            display: "inline-block",
+            float: "right",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.firstFlashing ? flashKeyframes : "none",
+            ":focus": {
+                color: palette_1.default.focus
+            },
+            ":hover": {
+                background: palette_1.default.highlightBackground
+            }
+        };
+        const secondCellStyle = {
+            padding: "4px",
+            display: "inline-block",
+            float: "left",
+            animationDuration: "1s",
+            animationIterationCount: "1",
+            animationTimingFunction: "ease-in",
+            animationName: this.state.secondFlashing ? flashKeyframes : "none",
+            ":focus": {
+                color: palette_1.default.focus
+            },
+            ":hover": {
+                background: palette_1.default.highlightBackground
+            }
+        };
+        const labelStyle = {
+            margin: "auto",
+            padding: "4px"
+        };
+        const firstAddress = this.props.address;
+        const secondAddress = this.props.address + 1;
+        const firstLabel = MemoryCellPair.toAddressLabel(firstAddress);
+        const secondLabel = MemoryCellPair.toAddressLabel(secondAddress);
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement("div", { key: 0, style: firstCellStyle, onClick: () => this._firstCell.current.focus() },
+                react_1.default.createElement("label", { style: labelStyle }, firstLabel),
+                react_1.default.createElement(cell_1.default, { ref: this._firstCell, onChange: (value) => this.props.onChange(firstAddress, value) })),
+            react_1.default.createElement("div", { key: 1, style: secondCellStyle, onClick: () => this._secondCell.current.focus() },
+                react_1.default.createElement(cell_1.default, { ref: this._secondCell, onChange: (value) => this.props.onChange(secondAddress, value) }),
+                react_1.default.createElement("label", { style: labelStyle }, secondLabel))));
+    }
+    setFirstCell(value) {
+        this._firstCell.current.setValue(value);
+        if (!this.state.firstFlashing && !this._firstCell.current.state.focused)
+            this.setState({ firstFlashing: true }, () => setTimeout(() => this.setState({ firstFlashing: false }), 1000));
+    }
+    setSecondCell(value) {
+        this._secondCell.current.setValue(value);
+        if (!this.state.secondFlashing && !this._secondCell.current.state.focused)
+            this.setState({ secondFlashing: true }, () => setTimeout(() => this.setState({ secondFlashing: false }), 1000));
+    }
+}
+exports.default = radium_1.default(MemoryCellPair);
+
+
+/***/ }),
+
+/***/ "./source/components/root.tsx":
+/*!************************************!*\
+  !*** ./source/components/root.tsx ***!
+  \************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const toolBar_1 = __importDefault(__webpack_require__(/*! ./toolBar */ "./source/components/toolBar.tsx"));
+const cpu_1 = __importDefault(__webpack_require__(/*! ./cpu */ "./source/components/cpu.tsx"));
+const memory_1 = __importDefault(__webpack_require__(/*! ./memory */ "./source/components/memory.tsx"));
+const brookshearMachine_1 = __importDefault(__webpack_require__(/*! ../brookshearMachine */ "./source/brookshearMachine.ts"));
+const editor_1 = __importDefault(__webpack_require__(/*! ./editor */ "./source/components/editor.tsx"));
+const brookshearAssembler_1 = __importDefault(__webpack_require__(/*! ../brookshearAssembler */ "./source/brookshearAssembler.ts"));
+class Root extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._machine = new brookshearMachine_1.default();
+        this._assembler = new brookshearAssembler_1.default();
+        this._cpu = react_1.default.createRef();
+        this._memory = react_1.default.createRef();
+        this._editor = react_1.default.createRef();
+        this._toolBar = react_1.default.createRef();
+        this._rowMap = new Map();
+        this._machine.onPause = () => this._toolBar.current.setRunning(false);
+        this._machine.onProgramCounterChange = (pc) => this.handleProgramCounterChange(pc);
+        this._machine.onRegisterChange = (register, value) => this._cpu.current.setRegister(register, value);
+        this._machine.onMemoryChange = (address, value) => this.handleMemoryChange(address, value);
+        this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
+        this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
+        this._machine.onError = (message) => this._toolBar.current.setError(message);
+        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
+        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
+    }
+    componentDidMount() {
+        const fibonacciExample = "; Fibonacci Numbers \n" +
+            "; sum will be in register F\n" +
+            "ldrc 0x1, 10; n\n" +
+            "ldrc 0xD, 0; previous\n" +
+            "ldrc 0xE, 1; current\n" +
+            "ldrc 0xF, 1; sum\n" +
+            "ldrc 0xB, 1; i\n" +
+            "\n" +
+            "ldrc 0x0, 0\n" +
+            "jmp 0x1, if; if (n == 0)\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "if:\n" +
+            "ldrc 0xF, 0; sum = 0\n" +
+            "jmp 0x0, end; return\n" +
+            "\n" +
+            "for_control:\n" +
+            "mov 0x1, 0x0\n" +
+            "jmp 0xB, end; if (i == n) return\n" +
+            "add 0xF, 0xD, 0xE; sum = previous + current\n" +
+            "mov 0xE, 0xD; previous = current\n" +
+            "mov 0xF, 0xE; current = sum\n" +
+            "ldrc 0x0, 1\n" +
+            "add 0xB, 0xB, 0x0; i = i + 1\n" +
+            "jmp 0x0, for_control\n" +
+            "\n" +
+            "end:\n" +
+            "hlt";
+        this._editor.current.setText(fibonacciExample);
+    }
+    render() {
+        const mainStyle = {
+            height: "100vh",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column"
+        };
+        const contentStyle = {
+            display: "flex",
+            flexGrow: 1,
+            flexDirection: "row",
+            alignContent: "stretch",
+            alighItems: "stretch",
+            overflowY: "auto"
+        };
+        return (react_1.default.createElement(radium_1.default.StyleRoot, null,
+            react_1.default.createElement("div", { style: mainStyle },
+                react_1.default.createElement(toolBar_1.default, { ref: this._toolBar, onResetCPU: () => this._machine.resetCPU(), onResetMemory: () => this._machine.resetMemory(), onRun: () => this.handleRun(), onPause: () => this._machine.pause(), onStepOver: () => this._machine.stepOver(), onStepTimeChange: (ms) => this._machine.setStepTime(ms), onBuild: () => this.handleBuild(), onClearEditor: () => this._editor.current.clearEditor() }),
+                react_1.default.createElement("div", { style: contentStyle },
+                    react_1.default.createElement(cpu_1.default, { ref: this._cpu, registers: 16, onProgramCounterChange: (value) => this._machine.setProgramCounter(value), onRegisterChange: (register, value) => this._machine.setRegister(register, value) }),
+                    react_1.default.createElement(memory_1.default, { ref: this._memory, memory: 256, onChange: (address, value) => this._machine.setMemoryCell(address, value) }),
+                    react_1.default.createElement(editor_1.default, { ref: this._editor, onChange: () => this.clearRowMap() })))));
+    }
+    handleRun() {
+        this._toolBar.current.setRunning(true);
+        this._machine.run();
+    }
+    handleBuild() {
+        this._assembler.clear();
+        this._editor.current.clearConsole();
+        this.clearRowMap();
+        if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
+            this._toolBar.current.setError("BUILD FAILED", true);
+            this._editor.current.appendMessage("Build failed.");
+            return;
+        }
+        this._machine.stop();
+        const machineCode = this._assembler.getMachineCode();
+        this._machine.setMemory(machineCode);
+        this._rowMap = this._assembler.getRowMap();
+        this.handleProgramCounterChange(this._machine.getProgramCounter());
+        this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
+        this._editor.current.appendMessage("Build succeeded: " + machineCode.length + "B.");
+    }
+    handleProgramCounterChange(programCounter) {
+        this._cpu.current.setProgramCounter(programCounter);
+        if (this._rowMap.has(programCounter))
+            this._editor.current.setArrowPosition(this._rowMap.get(programCounter));
+        else
+            this._editor.current.disappearArrow();
+    }
+    handleMemoryChange(address, value) {
+        this._memory.current.setCell(address, value);
+        const key = address - (address % 2);
+        if (this._rowMap.has(key)) {
+            this._rowMap.delete(key);
+            if (this._machine.getProgramCounter() === key)
+                this._editor.current.disappearArrow();
+        }
+    }
+    clearRowMap() {
+        this._rowMap.clear();
+        this._editor.current.disappearArrow();
+    }
+}
+exports.default = Root;
+
+
+/***/ }),
+
+/***/ "./source/components/slider.tsx":
+/*!**************************************!*\
+  !*** ./source/components/slider.tsx ***!
+  \**************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
 class Slider extends react_1.default.Component {
     render() {
         const reverse = this.props.min > this.props.max;
@@ -65620,10 +65610,10 @@ exports.default = radium_1.default(Slider);
 
 /***/ }),
 
-/***/ "./toolBar.tsx":
-/*!*********************!*\
-  !*** ./toolBar.tsx ***!
-  \*********************/
+/***/ "./source/components/toolBar.tsx":
+/*!***************************************!*\
+  !*** ./source/components/toolBar.tsx ***!
+  \***************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -65634,10 +65624,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
-const toolButton_1 = __importDefault(__webpack_require__(/*! ./toolButton */ "./toolButton.tsx"));
-const slider_1 = __importDefault(__webpack_require__(/*! ./slider */ "./slider.tsx"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
-const infoBar_1 = __importDefault(__webpack_require__(/*! ./infoBar */ "./infoBar.tsx"));
+const toolButton_1 = __importDefault(__webpack_require__(/*! ./toolButton */ "./source/components/toolButton.tsx"));
+const slider_1 = __importDefault(__webpack_require__(/*! ./slider */ "./source/components/slider.tsx"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+const infoBar_1 = __importDefault(__webpack_require__(/*! ./infoBar */ "./source/components/infoBar.tsx"));
 class ToolBar extends react_1.default.Component {
     constructor(props) {
         super(props);
@@ -65698,10 +65688,10 @@ exports.default = ToolBar;
 
 /***/ }),
 
-/***/ "./toolButton.tsx":
-/*!************************!*\
-  !*** ./toolButton.tsx ***!
-  \************************/
+/***/ "./source/components/toolButton.tsx":
+/*!******************************************!*\
+  !*** ./source/components/toolButton.tsx ***!
+  \******************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -65713,7 +65703,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
-const palette_1 = __importDefault(__webpack_require__(/*! ./palette */ "./palette.ts"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
 class ToolButton extends react_1.default.Component {
     render() {
         const style = {
@@ -65739,6 +65729,35 @@ class ToolButton extends react_1.default.Component {
     }
 }
 exports.default = radium_1.default(ToolButton);
+
+
+/***/ }),
+
+/***/ "./source/palette.ts":
+/*!***************************!*\
+  !*** ./source/palette.ts ***!
+  \***************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Palette = {
+    default: "white",
+    passive: "#26aab3",
+    focus: "#d31ac4",
+    error: "red",
+    success: "green",
+    flash: "#82801B",
+    highlightBackground: "#2e0e40",
+    toolBarBackground: "#000a1b",
+    toolBarHighlightBackground: "#132044",
+    cpuBackground: "#030e20",
+    memoryBackground: "#08162e",
+    progress: "#032a3a"
+};
+exports.default = Palette;
 
 
 /***/ })

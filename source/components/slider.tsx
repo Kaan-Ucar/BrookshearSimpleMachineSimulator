@@ -1,6 +1,6 @@
 import React from "react";
 import Radium from "radium";
-import Palette from "./palette";
+import Palette from "../palette";
 
 class Slider extends React.Component<any, any> {
     render() {

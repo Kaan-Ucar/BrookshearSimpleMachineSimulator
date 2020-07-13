@@ -31,10 +31,10 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="assemblyBrookshearMode.js">
+    <Content Include="source\assemblyBrookshearMode.js">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="brookshearMachine.ts">
+    <Content Include="source\brookshearMachine.ts">
       <SubType>Code</SubType>
     </Content>
     <Content Include="dist\app-bundle.js" />
@@ -42,7 +42,7 @@
     <Content Include="index.html">
       <SubType>Code</SubType>
     </Content>
-    <Content Include="palette.ts">
+    <Content Include="source\palette.ts">
       <SubType>Code</SubType>
     </Content>
     <Content Include="server.js" />
@@ -59,45 +59,50 @@
     <TypeScriptCompile Include="app.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="brookshearAssembler.ts">
+    <TypeScriptCompile Include="source\brookshearAssembler.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="brookshearAssemblerToken.ts">
+    <TypeScriptCompile Include="source\brookshearAssemblerToken.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="cell.tsx">
+    <TypeScriptCompile Include="source\components\cell.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="cpu.tsx">
+    <TypeScriptCompile Include="source\components\cpu.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="cpuCell.tsx">
+    <TypeScriptCompile Include="source\components\cpuCell.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="editor.tsx">
+    <TypeScriptCompile Include="source\components\editor.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="infoBar.tsx">
+    <TypeScriptCompile Include="source\components\infoBar.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="memory.tsx">
+    <TypeScriptCompile Include="source\components\root.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="memoryCellPair.tsx">
+    <TypeScriptCompile Include="source\components\memory.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="slider.tsx">
+    <TypeScriptCompile Include="source\components\memoryCellPair.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="toolBar.tsx">
+    <TypeScriptCompile Include="source\components\slider.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="toolButton.tsx">
+    <TypeScriptCompile Include="source\components\toolBar.tsx">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="source\components\toolButton.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="dist\" />
+    <Folder Include="source\" />
+    <Folder Include="source\components\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
   <ProjectExtensions>
