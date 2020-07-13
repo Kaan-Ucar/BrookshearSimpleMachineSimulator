@@ -3,9 +3,9 @@ import Radium from "radium";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
 import "ace-builds/src-noconflict/theme-terminal";
-import AssemblyBrookshearMode from "./assemblyBrookshearMode";
-import BrookshearAssemblerToken from "./brookshearAssemblerToken";
-import Palette from "./palette";
+import AssemblyBrookshearMode from "../assemblyBrookshearMode";
+import BrookshearAssemblerToken from "../brookshearAssemblerToken";
+import Palette from "../palette";
 
 class Editor extends React.Component<any, any> {
     private _editor = React.createRef<AceEditor>();

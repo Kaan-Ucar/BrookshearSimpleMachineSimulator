@@ -1,6 +1,6 @@
 import React from "react";
 import MemoryCellPair from "./memoryCellPair";
-import Palette from "./palette";
+import Palette from "../palette";
 
 class Memory extends React.Component<any, any> {
     private _cellPairs = [];

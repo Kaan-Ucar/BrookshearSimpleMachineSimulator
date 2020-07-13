@@ -1,7 +1,7 @@
 import React from "react";
 import Radium from "radium";
 import Cell from "./cell";
-import Palette from "./palette";
+import Palette from "../palette";
 
 class MemoryCellPair extends React.Component<any, any> {
     private _firstCell = React.createRef<any>();

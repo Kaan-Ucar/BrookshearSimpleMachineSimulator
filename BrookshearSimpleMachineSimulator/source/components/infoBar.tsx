@@ -1,5 +1,5 @@
 import React from "react";
-import Palette from "./palette";
+import Palette from "../palette";
 
 class infoBar extends React.Component<any, any> {
     constructor(props) {
