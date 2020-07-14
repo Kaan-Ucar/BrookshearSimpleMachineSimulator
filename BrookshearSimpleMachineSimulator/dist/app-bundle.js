@@ -65015,23 +65015,18 @@ const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules
 const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
 const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
 __webpack_require__(/*! ace-builds/src-noconflict/theme-cobalt */ "./node_modules/ace-builds/src-noconflict/theme-cobalt.js");
-__webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
 const assemblyBrookshearMode_1 = __importDefault(__webpack_require__(/*! ../assemblyBrookshearMode */ "./source/assemblyBrookshearMode.js"));
 const brookshearAssemblerToken_1 = __importDefault(__webpack_require__(/*! ../brookshearAssemblerToken */ "./source/brookshearAssemblerToken.ts"));
 const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+const terminal_1 = __importDefault(__webpack_require__(/*! ./terminal */ "./source/components/terminal.tsx"));
 class Editor extends react_1.default.Component {
-    constructor(props) {
-        super(props);
+    constructor() {
+        super(...arguments);
         this._editor = react_1.default.createRef();
-        this._console = react_1.default.createRef();
-        this.state = {
-            consoleVisible: false,
-            notifications: 0
-        };
+        this._terminal = react_1.default.createRef();
     }
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new assemblyBrookshearMode_1.default());
-        this._console.current.editor.getSession().setOption("useWorker", false);
     }
     render() {
         const style = {
@@ -65042,51 +65037,12 @@ class Editor extends react_1.default.Component {
             overflow: "auto"
         };
         const editorStyle = {
-            flexGrow: 4,
-            position: "relative"
-        };
-        const consoleStyle = {
-            flexGrow: this.state.consoleVisible ? 1 : 0,
-            transition: "flex-grow 0.3s"
+            flexGrow: 4
         };
         const fillStyle = {
             width: "100%",
             height: "100%"
         };
-        const consoleButtonStyle = {
-            position: "absolute",
-            bottom: 0,
-            right: "20px",
-            color: palette_1.default.default,
-            background: "black",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            borderTopLeftRadius: "25%",
-            borderTopRightRadius: "25%",
-            ":hover": {
-                color: palette_1.default.focus
-            }
-        };
-        const notificationsBubbleStyle = {
-            position: "absolute",
-            background: palette_1.default.focus,
-            color: palette_1.default.default,
-            borderRadius: "50%",
-            left: "-8px",
-            top: "-8px",
-            width: "16px",
-            height: "16px",
-            visibility: this.state.notifications > 0 ? "visible" : "hidden"
-        };
-        const notificationsTextStyle = {
-            display: "inline-block",
-            verticalAlign: "middle",
-            fontSize: "small",
-            fontFamily: "arial",
-            textAlign: "center"
-        };
-        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
         return (react_1.default.createElement("div", { style: style },
             react_1.default.createElement("div", { key: "editor", style: editorStyle },
                 react_1.default.createElement(radium_1.default.Style, { scopeSelector: ".ace_gutter-cell.arrow", rules: {
@@ -65094,13 +65050,8 @@ class Editor extends react_1.default.Component {
                         color: palette_1.default.default,
                         clipPath: "polygon(73% 0, 100% 50%, 73% 100%, 0 100%, 0 0)"
                     } }),
-                react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true, onChange: this.props.onChange }),
-                react_1.default.createElement("button", { style: consoleButtonStyle, onClick: () => this.toggleConsoleVisibility() },
-                    react_1.default.createElement("i", { className: "material-icons" }, consoleButtonIcon),
-                    react_1.default.createElement("div", { style: notificationsBubbleStyle },
-                        react_1.default.createElement("span", { style: notificationsTextStyle }, this.state.notifications)))),
-            react_1.default.createElement("div", { key: "console", style: consoleStyle },
-                react_1.default.createElement(react_ace_1.default, { ref: this._console, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true }))));
+                react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "cobalt", showPrintMargin: false, wrapEnabled: true, onChange: this.props.onChange })),
+            react_1.default.createElement(terminal_1.default, { ref: this._terminal, onToggle: () => this._editor.current.editor.resize() })));
     }
     getAllTokens() {
         const rows = this._editor.current.editor.getSession().getLength();
@@ -65119,41 +65070,20 @@ class Editor extends react_1.default.Component {
         }
         return tokens;
     }
-    toggleConsoleVisibility() {
-        this.setState({
-            consoleVisible: !this.state.consoleVisible,
-            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
-        });
-        // resize on callback doesn't fix, resizing issue
-        setTimeout(() => {
-            this._console.current.editor.resize();
-            this._editor.current.editor.resize();
-        }, 300);
-    }
     clearEditor() {
         this._editor.current.editor.getSession().setValue("");
     }
-    clearConsole() {
-        this._console.current.editor.getSession().setValue("");
-        this.setState(() => ({ notifications: 0 }));
+    clearTerminal() {
+        this._terminal.current.clear();
     }
-    appendWarning(row, column, message) {
-        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
+    appendWarningToTerminal(row, column, message) {
+        this._terminal.current.appendWarning(row, column, message);
     }
-    appendError(row, column, message) {
-        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    appendErrorToTerminal(row, column, message) {
+        this._terminal.current.appendError(row, column, message);
     }
-    appendMessage(message, annotation = "") {
-        let session = this._console.current.editor.getSession();
-        const length = session.getLength();
-        session.insert({ row: length, column: 0 }, message + "\n");
-        if (annotation !== "") {
-            let annotations = session.getAnnotations();
-            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
-            session.setAnnotations(annotations);
-        }
-        if (!this.state.consoleVisible)
-            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    appendMessageToTerminal(message, annotation = "") {
+        this._terminal.current.appendMessage(message, annotation);
     }
     setArrowPosition(row) {
         this.disappearArrow();
@@ -65166,7 +65096,7 @@ class Editor extends react_1.default.Component {
         this._editor.current.editor.setValue(text, -1);
     }
 }
-exports.default = radium_1.default(Editor);
+exports.default = Editor;
 
 
 /***/ }),
@@ -65461,8 +65391,8 @@ class Root extends react_1.default.Component {
         this._machine.onProgressChange = (progress) => this._toolBar.current.setProgress(progress);
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
-        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
-        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
+        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarningToTerminal(row, column, message);
+        this._assembler.onError = (row, column, message) => this._editor.current.appendErrorToTerminal(row, column, message);
     }
     componentDidMount() {
         const fibonacciExample = "; Fibonacci Numbers \n" +
@@ -65524,11 +65454,11 @@ class Root extends react_1.default.Component {
     }
     handleBuild() {
         this._assembler.clear();
-        this._editor.current.clearConsole();
+        this._editor.current.clearTerminal();
         this.clearRowMap();
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
-            this._editor.current.appendMessage("Build failed.");
+            this._editor.current.appendMessageToTerminal("Build failed.");
             return;
         }
         this._machine.stop();
@@ -65537,7 +65467,7 @@ class Root extends react_1.default.Component {
         this._rowMap = this._assembler.getRowMap();
         this.handleProgramCounterChange(this._machine.getProgramCounter());
         this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
-        this._editor.current.appendMessage("Build succeeded: " + machineCode.length + "B.");
+        this._editor.current.appendMessageToTerminal("Build succeeded: " + machineCode.length + "B.");
     }
     handleProgramCounterChange(programCounter) {
         this._cpu.current.setProgramCounter(programCounter);
@@ -65606,6 +65536,128 @@ class Slider extends react_1.default.Component {
     }
 }
 exports.default = radium_1.default(Slider);
+
+
+/***/ }),
+
+/***/ "./source/components/terminal.tsx":
+/*!****************************************!*\
+  !*** ./source/components/terminal.tsx ***!
+  \****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_1 = __importDefault(__webpack_require__(/*! react */ "./node_modules/react/index.js"));
+const radium_1 = __importDefault(__webpack_require__(/*! radium */ "./node_modules/radium/es/index.js"));
+const react_ace_1 = __importDefault(__webpack_require__(/*! react-ace */ "./node_modules/react-ace/lib/index.js"));
+const palette_1 = __importDefault(__webpack_require__(/*! ../palette */ "./source/palette.ts"));
+__webpack_require__(/*! ace-builds/src-noconflict/theme-terminal */ "./node_modules/ace-builds/src-noconflict/theme-terminal.js");
+class Terminal extends react_1.default.Component {
+    constructor(props) {
+        super(props);
+        this._editor = react_1.default.createRef();
+        this.state = {
+            expanded: false,
+            notifications: 0
+        };
+    }
+    componentDidMount() {
+        this._editor.current.editor.getSession().setOption("useWorker", false);
+    }
+    render() {
+        const style = {
+            flexGrow: this.state.expanded ? 1 : 0,
+            transition: "flex-grow 0.3s",
+            position: "relative"
+        };
+        const toggleButtonStyle = {
+            position: "absolute",
+            bottom: "100%",
+            right: "20px",
+            color: palette_1.default.default,
+            background: "black",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            borderTopLeftRadius: "25%",
+            borderTopRightRadius: "25%",
+            ":hover": {
+                color: palette_1.default.focus
+            }
+        };
+        const fillStyle = {
+            width: "100%",
+            height: "100%"
+        };
+        const notificationsBubbleStyle = {
+            position: "absolute",
+            background: palette_1.default.focus,
+            color: palette_1.default.default,
+            borderRadius: "50%",
+            left: "-8px",
+            top: "-8px",
+            width: "16px",
+            height: "16px",
+            visibility: this.state.notifications > 0 ? "visible" : "hidden"
+        };
+        const notificationsTextStyle = {
+            display: "inline-block",
+            verticalAlign: "middle",
+            fontSize: "small",
+            fontFamily: "arial",
+            textAlign: "center"
+        };
+        const toggleButtonIcon = this.state.expanded ? "arrow_drop_down" : "arrow_drop_up";
+        return (react_1.default.createElement("div", { style: style },
+            react_1.default.createElement("button", { style: toggleButtonStyle, onClick: () => this.toggleVisibility() },
+                react_1.default.createElement("i", { className: "material-icons" }, toggleButtonIcon),
+                react_1.default.createElement("div", { style: notificationsBubbleStyle },
+                    react_1.default.createElement("span", { style: notificationsTextStyle }, this.state.notifications))),
+            react_1.default.createElement(react_ace_1.default, { ref: this._editor, style: fillStyle, theme: "terminal", showPrintMargin: false, readOnly: true, highlightActiveLine: false, wrapEnabled: true })));
+    }
+    toggleVisibility() {
+        this.setState({
+            expanded: !this.state.expanded,
+            notifications: !this.state.expanded ? 0 : this.state.notifications
+        });
+        // resize on callback doesn't fix, resizing issue
+        setTimeout(() => {
+            this.props.onToggle();
+            this._editor.current.editor.resize();
+        }, 300);
+    }
+    clear() {
+        const session = this._editor.current.editor.getSession();
+        session.clearAnnotations();
+        session.setValue("");
+        this.setState(() => ({ notifications: 0 }));
+    }
+    appendWarning(row, column, message) {
+        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
+    }
+    appendError(row, column, message) {
+        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    }
+    appendMessage(message, annotation = "") {
+        let session = this._editor.current.editor.getSession();
+        const length = session.getLength();
+        session.insert({ row: length, column: 0 }, message + "\n");
+        if (annotation !== "") {
+            let annotations = session.getAnnotations();
+            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
+            session.setAnnotations(annotations);
+        }
+        if (!this.state.expanded)
+            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    }
+}
+exports.default = radium_1.default(Terminal);
 
 
 /***/ }),

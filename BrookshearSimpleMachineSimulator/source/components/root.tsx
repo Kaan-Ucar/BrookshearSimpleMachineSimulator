@@ -12,7 +12,7 @@ class Root extends React.Component<any, any> {
     private _assembler = new BrookshearAssembler();
     private _cpu = React.createRef<CPU>();
     private _memory = React.createRef<Memory>();
-    private _editor = React.createRef<any>();
+    private _editor = React.createRef<Editor>();
     private _toolBar = React.createRef<ToolBar>();
     private _rowMap = new Map<number, number>();
 
@@ -27,8 +27,8 @@ class Root extends React.Component<any, any> {
         this._machine.onInfo = (message) => this._toolBar.current.setInfo(message);
         this._machine.onError = (message) => this._toolBar.current.setError(message);
 
-        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarning(row, column, message);
-        this._assembler.onError = (row, column, message) => this._editor.current.appendError(row, column, message);
+        this._assembler.onWarning = (row, column, message) => this._editor.current.appendWarningToTerminal(row, column, message);
+        this._assembler.onError = (row, column, message) => this._editor.current.appendErrorToTerminal(row, column, message);
     }
 
     componentDidMount() {
@@ -121,12 +121,12 @@ class Root extends React.Component<any, any> {
 
     private handleBuild() {
         this._assembler.clear();
-        this._editor.current.clearConsole();
+        this._editor.current.clearTerminal();
         this.clearRowMap();
 
         if (!this._assembler.assemblyLines(this._editor.current.getAllTokens())) {
             this._toolBar.current.setError("BUILD FAILED", true);
-            this._editor.current.appendMessage("Build failed.");
+            this._editor.current.appendMessageToTerminal("Build failed.");
             return;
         }
 
@@ -136,7 +136,7 @@ class Root extends React.Component<any, any> {
         this._rowMap = this._assembler.getRowMap();
         this.handleProgramCounterChange(this._machine.getProgramCounter());
         this._toolBar.current.setSuccess("BUILD SUCCEEDED", true);
-        this._editor.current.appendMessage("Build succeeded: " + machineCode.length + "B.");
+        this._editor.current.appendMessageToTerminal("Build succeeded: " + machineCode.length + "B.");
     }
 
     private handleProgramCounterChange(programCounter: number) {

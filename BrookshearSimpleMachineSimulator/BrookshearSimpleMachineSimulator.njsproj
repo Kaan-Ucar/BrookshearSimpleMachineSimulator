@@ -92,6 +92,9 @@
     <TypeScriptCompile Include="source\components\slider.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="source\components\terminal.tsx">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="source\components\toolBar.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
