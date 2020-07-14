@@ -2,27 +2,17 @@ import React from "react";
 import Radium from "radium";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/theme-cobalt";
-import "ace-builds/src-noconflict/theme-terminal";
 import AssemblyBrookshearMode from "../assemblyBrookshearMode";
 import BrookshearAssemblerToken from "../brookshearAssemblerToken";
 import Palette from "../palette";
+import Terminal from "./terminal";
 
 class Editor extends React.Component<any, any> {
     private _editor = React.createRef<AceEditor>();
-    private _console = React.createRef<AceEditor>();
-
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            consoleVisible: false,
-            notifications: 0
-        };
-    }
+    private _terminal = React.createRef<any>();
 
     componentDidMount() {
         this._editor.current.editor.getSession().setMode(new AssemblyBrookshearMode());
-        this._console.current.editor.getSession().setOption("useWorker", false);
     }
 
     render() {
@@ -35,58 +25,13 @@ class Editor extends React.Component<any, any> {
         } as React.CSSProperties;
         
         const editorStyle = {
-            flexGrow: 4,
-            position: "relative"
-        } as React.CSSProperties;
-
-        const consoleStyle = {
-            flexGrow: this.state.consoleVisible ? 1 : 0,
-            transition: "flex-grow 0.3s"
+            flexGrow: 4
         } as React.CSSProperties;
 
         const fillStyle = {
             width: "100%",
             height: "100%"
         } as React.CSSProperties;
-
-        const consoleButtonStyle = {
-            position: "absolute",
-            bottom: 0,
-            right: "20px",
-            color: Palette.default,
-            background: "black",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            borderTopLeftRadius: "25%",
-            borderTopRightRadius: "25%",
-
-            ":hover": {
-                color: Palette.focus
-            }
-        } as React.CSSProperties;
-
-        const notificationsBubbleStyle = {
-            position: "absolute",
-            background: Palette.focus,
-            color: Palette.default,
-            borderRadius: "50%",
-            left: "-8px",
-            top: "-8px",
-            width: "16px",
-            height: "16px",
-            visibility: this.state.notifications > 0 ? "visible": "hidden"
-        } as React.CSSProperties;
-
-        const notificationsTextStyle = {
-            display: "inline-block",
-            verticalAlign: "middle",
-            fontSize: "small",
-            fontFamily: "arial",
-            textAlign: "center"
-        } as React.CSSProperties;
-
-        const consoleButtonIcon = this.state.consoleVisible ? "arrow_drop_down" : "arrow_drop_up";
 
         return (
             <div style={style}>
@@ -110,30 +55,11 @@ class Editor extends React.Component<any, any> {
                         wrapEnabled={true}
                         onChange={this.props.onChange}
                     />
-                    <button
-                        style={consoleButtonStyle}
-                        onClick={() => this.toggleConsoleVisibility()}
-                    >
-                        <i className="material-icons">{consoleButtonIcon}</i>
-                        <div style={notificationsBubbleStyle}>
-                            <span style={notificationsTextStyle}>{ this.state.notifications }</span>
-                        </div>
-                    </button>
                 </div>
-                <div
-                    key="console"
-                    style={consoleStyle}
-                >
-                    <AceEditor
-                        ref={this._console}
-                        style={fillStyle}
-                        theme="terminal"
-                        showPrintMargin={false}
-                        readOnly={true}
-                        highlightActiveLine={false}
-                        wrapEnabled={true}
-                    />
-                </div>
+                <Terminal
+                    ref={this._terminal}
+                    onToggle={() => this._editor.current.editor.resize()}
+                />
             </div>
         );
     }
@@ -161,49 +87,24 @@ class Editor extends React.Component<any, any> {
         return tokens;
     }
 
-    toggleConsoleVisibility() {
-        this.setState({
-            consoleVisible: !this.state.consoleVisible,
-            notifications: !this.state.consoleVisible ? 0 : this.state.notifications
-        });
-        
-        // resize on callback doesn't fix, resizing issue
-        setTimeout(() => {
-            this._console.current.editor.resize();
-            this._editor.current.editor.resize();
-        }, 300);
-    }
-
     clearEditor() {
         this._editor.current.editor.getSession().setValue("");
     }
 
-    clearConsole() {
-        this._console.current.editor.getSession().setValue("");
-        this.setState(() => ({ notifications: 0 }));
+    clearTerminal() {
+        this._terminal.current.clear();
     }
 
-    appendWarning(row, column, message) {
-        this.appendMessage("warning(" + row + "," + column + "): " + message, "warning");
+    appendWarningToTerminal(row, column, message) {
+        this._terminal.current.appendWarning(row, column, message);
     }
 
-    appendError(row, column, message) {
-        this.appendMessage("error(" + row + "," + column + "): " + message, "error");
+    appendErrorToTerminal(row, column, message) {
+        this._terminal.current.appendError(row, column, message);
     }
 
-    appendMessage(message: string, annotation = "") {
-        let session = this._console.current.editor.getSession();
-        const length = session.getLength();
-        session.insert({ row: length, column: 0 }, message + "\n");
-        
-        if (annotation !== "") {
-            let annotations = session.getAnnotations();
-            annotations.push({ row: length - 1, column: 0, text: message, type: annotation });
-            session.setAnnotations(annotations);
-        }
-
-        if (!this.state.consoleVisible)
-            this.setState(prevState => ({ notifications: prevState.notifications + 1 }));
+    appendMessageToTerminal(message: string, annotation = "") {
+        this._terminal.current.appendMessage(message, annotation);
     }
 
     setArrowPosition(row: number) {
@@ -220,4 +121,4 @@ class Editor extends React.Component<any, any> {
     }
 }
 
-export default Radium(Editor);
+export default Editor;
