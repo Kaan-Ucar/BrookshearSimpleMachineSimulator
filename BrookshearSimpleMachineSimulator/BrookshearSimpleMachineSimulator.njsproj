@@ -65,6 +65,9 @@
     <TypeScriptCompile Include="source\brookshearAssemblerToken.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="source\byteConverter.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="source\components\cell.tsx">
       <SubType>Code</SubType>
     </TypeScriptCompile>
