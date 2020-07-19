@@ -3,13 +3,13 @@ import MemoryCellPair from "./memoryCellPair";
 import Palette from "../palette";
 
 class Memory extends React.Component<any, any> {
-    private _cellPairs = [];
+    private _cellPairs = new Map<number, React.RefObject<any>>();
 
     constructor(props) {
         super(props);
 
         for (let i = 0; i < this.props.memory; i += 2)
-            this._cellPairs.push(React.createRef<any>());
+            this._cellPairs[i] = React.createRef<any>();
     }
 
     render() {
@@ -29,7 +29,7 @@ class Memory extends React.Component<any, any> {
         for (let i = 0; i < this.props.memory; i += 2)
             cellPairs.push(
                 <MemoryCellPair key={i}
-                    ref={this._cellPairs[Math.trunc(i / 2)]}
+                    ref={this._cellPairs[i]}
                     address={i}
                     onChange={this.props.onChange}
                 />
@@ -43,7 +43,7 @@ class Memory extends React.Component<any, any> {
     }
 
     setCell(address: number, value: number) {
-        const cellPair = this._cellPairs[Math.trunc(address / 2)].current;
+        const cellPair = this._cellPairs[address - (address % 2)].current;
         if (address % 2 === 0)
             cellPair.setFirstCell(value);
         else

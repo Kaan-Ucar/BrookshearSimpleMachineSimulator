@@ -1,4 +1,6 @@
-﻿class BrookshearMachine {
+﻿import ByteConverter from "./byteConverter";
+
+class BrookshearMachine {
     public onPause = () => { };
     public onProgramCounterChange = (pc: number) => { };
     public onRegisterChange = (register: number, value: number) => { };
@@ -159,7 +161,7 @@
 
             case 6: // Add the content of register B and register C, and put the result in register A. Data is interpreted as floats in floating point notation.
                 message = "Add the content of register " + strB + " and register " + strC + " as floats, and put the result in register " + strA + ".";
-                instruction = () => { this.setRegister(operandA, this._registers[operandB] + this._registers[operandC]); };
+                instruction = () => { this.setRegister(operandA, ByteConverter.floatToByte(ByteConverter.byteToFloat(this._registers[operandB]) + ByteConverter.byteToFloat(this._registers[operandC]))); };
                 break;
 
             case 7: // Bitwise OR the content of register B and C, and put the result in register A.
